@@ -1,0 +1,27 @@
+{
+  "name": "openkotor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "homepage": "https://openkotor.com",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "serve": "npm run build && npx live-server dist --port=3000 --open=/",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "live-server": "^1.2.2",
+    "sass": "^1.93.2",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}
