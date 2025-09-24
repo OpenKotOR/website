@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
-import ThemeToggle from '../common/ThemeToggle/ThemeToggle';
+// import ThemeToggle from '../common/ThemeToggle/ThemeToggle';
 
 export default function TopNav() {
   const { state } = useAppContext();

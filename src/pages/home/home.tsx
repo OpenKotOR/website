@@ -1,9 +1,9 @@
 import { useAppContext } from '../../hooks/useAppContext';
 
 export default function Home() {
-  const { state, updateGuildId } = useAppContext();
+  const { state } = useAppContext();
   const { inviteUrl } = state.config;
-  const { online, presenceCount, guildId, isLoading, error } = state.discord;
+  const { online, presenceCount, isLoading, error } = state.discord;
 
   return (
     <>
