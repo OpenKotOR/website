@@ -1,0 +1,55 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "VIS",
+  "description": "VIS (visibility) files are used by KotOR I & II to define which rooms are visible from which in an area. When the player is in a given room (parent), only the rooms listed as that parent's children are considered visible for rendering; other rooms are culled. This reduces draw calls and improves performance.\n\nThe file is plain text. There is no binary header or magic. From byte 0 to end of file, the content is a line-based list of parent rooms, each followed by zero or more child room names. Line endings are CRLF (0x0D 0x0A). Encoding is typically UTF-8 or ASCII. Empty lines are skipped. See VIS Header and parsing steps for the exact line formats.",
+  "endianness": "little",
+  "encoding": "utf-8",
+  "root": "VIS Header",
+  "types": {
+    "VIS Header": {
+      "kind": "struct",
+      "description": "VIS has no binary header. The file starts at byte 0 with plain-text room visibility data. No magic, no length prefix. Line endings are CRLF. Parse line by line; distinguish parent lines (no leading spaces) from child lines (exactly two leading spaces).",
+      "fields": [
+        { "name": "body", "type": { "kind": "string", "length": "fileSize" }, "offset": 0, "description": "From byte 0 to end of file. Plain text: a sequence of room blocks. Each block is one parent line followed by N child lines. See VIS Line formats and parsing steps." }
+      ]
+    },
+    "VIS Line formats": {
+      "kind": "struct",
+      "description": "Two line types. Identification: a line that starts with exactly two space characters (U+0020) is a child room line; otherwise it is a parent room line (after trimming empty lines).",
+      "fields": [
+        { "name": "parentRoomLine", "type": { "kind": "string", "length": 0 }, "description": "Format: room_name SPACE child_count. room_name: token with no spaces (room identifier). child_count: non-negative integer (number of following child lines). Example: 'm01aa_01 3'. Values are case-insensitive when used as keys." },
+        { "name": "childRoomLine", "type": { "kind": "string", "length": 0 }, "description": "Format: two spaces (U+0020) then room_name. room_name: rest of line, typically a single token with no spaces (child room identifier). Example: '  m01aa_02'. The engine does not render rooms not listed as children when standing in the parent." }
+      ]
+    },
+    "VIS Room block": {
+      "kind": "struct",
+      "description": "One parent room and its visible (child) rooms. Stored as one parent line then exactly child_count child lines. Order of blocks in the file is arbitrary.",
+      "fields": [
+        { "name": "parentRoomName", "type": { "kind": "string", "length": 32 }, "description": "Room name from the parent line (first token). Identifies the room whose visibility list follows." },
+        { "name": "childCount", "type": "u32", "description": "Value from the parent line (second token). Number of child room lines that follow." },
+        { "name": "childRoomNames", "type": { "kind": "string", "length": 0 }, "description": "child_count lines, each a child room line (two spaces + room name). List of rooms visible when the player is in parentRoomName." }
+      ]
+    }
+  },
+  "sections": [
+    {
+      "name": "content",
+      "offset": 0,
+      "size": "fileSize",
+      "typeRef": "VIS Header",
+      "typeLinks": ["VIS Line formats", "VIS Room block"],
+      "description": "Plain-text room visibility list. No binary header; file starts at 0. Parse as described in 'Parsing steps'. Line formats: see 'VIS Line formats'; logical blocks: see 'VIS Room block'."
+    }
+  ],
+  "layoutSteps": {
+    "title": "Parsing steps",
+    "steps": [
+      "Read the entire file as text (encoding UTF-8 or ASCII). Split on newline (LF or CRLF) to get lines.",
+      "Skip empty lines (after trim). For each non-empty line, check the first two characters: if they are exactly two space characters (U+0020), the line is a child room line; otherwise it is a parent room line.",
+      "Parent room line: split the trimmed line on space (or tab). First token = parent room name. Second token = child count (integer). Start a new room block with this name and count.",
+      "Child room line: the line starts with '  ' (two spaces). The remainder (trimmed) is the child room name. Append it to the current parent's list. After reading child_count child lines, the next non-empty line is a new parent line.",
+      "When switching from child lines to a new parent line, finalize the previous parent block (store it) and start the next block. At end of file, finalize the last block.",
+      "Room names are typically compared case-insensitively when looking up visibility. The file may list the same room as parent in multiple blocks (each with its own child list)."
+    ]
+  }
+}

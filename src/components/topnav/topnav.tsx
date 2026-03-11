@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAppContext } from '../../hooks/useAppContext';
 // import ThemeToggle from '../common/ThemeToggle/ThemeToggle';
 
@@ -42,9 +43,10 @@ export default function TopNav() {
   }, [isMenuOpen]);
 
   const navItems = [
-    { href: '#features', label: 'Features' },
-    { href: '#projects', label: 'Projects' },
-    { href: '#faq', label: 'FAQ' },
+    { to: '/', label: 'Home' },
+    { to: '/#projects', label: 'Projects' },
+    { to: '/#faq', label: 'FAQ' },
+    { to: '/formats', label: 'Formats' },
   ];
 
   return (
@@ -67,14 +69,14 @@ export default function TopNav() {
       <div className={`nav-links ${isMenuOpen ? 'nav-links--open' : ''}`}>
         <ul className="nav-list">
           {navItems.map((item) => (
-            <li key={item.href} className="nav-item">
-              <a 
-                href={item.href} 
+            <li key={item.to} className="nav-item">
+              <Link
+                to={item.to}
                 className="nav-link"
                 onClick={closeMenu}
               >
                 {item.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "2DA",
+  "description": "2DA (2D Array) is a table format used by KotOR I & II for game data such as appearance.2da, baseitems.2da, and similar. The file stores a grid of string cells with named columns and row labels.\n\nLayout: a fixed 9-byte header (file type, version, newline), then a null-terminated column list (column names separated by TAB), then row count (u32), then row index strings (each TAB-terminated), then an offset table (one u16 per cell), then data size (u16), then the string data block. Cell values are null-terminated strings in the data block; each offset in the offset table is relative to the start of the data block. Empty cells are stored as an empty string (offset to a NUL); readers often display these as \"****\". All multi-byte integers are little-endian. String encoding is typically Windows-1252 or UTF-8.",
+  "endianness": "little",
+  "encoding": "windows-1252",
+  "root": "TwoDAHeader",
+  "types": {
+    "TwoDAHeader": {
+      "kind": "struct",
+      "description": "First 9 bytes of the file. File type and version identify the format; the 0x0A byte is a newline terminator. The column list follows immediately after.",
+      "fields": [
+        { "name": "fileType", "type": { "kind": "string", "length": 4 }, "offset": 0, "description": "Must be '2DA ' (4 chars, space-padded)." },
+        { "name": "fileVersion", "type": { "kind": "string", "length": 4 }, "offset": 4, "description": "Format version; e.g. 'V2.b'." },
+        { "name": "newline", "type": "u8", "offset": 8, "description": "Single byte 0x0A (LF); skip when parsing." }
+      ]
+    },
+    "ColumnList": {
+      "kind": "struct",
+      "description": "Variable-length. Column names separated by TAB (0x09), terminated by NUL (0x00). The number of columns is the number of TAB-separated tokens. These names are the keys for each column in the row data.",
+      "fields": [
+        { "name": "names", "type": { "kind": "string", "terminator": 0 }, "description": "Sequence of column name strings separated by 0x09, ending at 0x00. Parse by reading chars until 0x09 (push name, clear), then until 0x00 (push final name). ColumnCount = number of names." }
+      ]
+    },
+    "RowIndexList": {
+      "kind": "struct",
+      "description": "RowCount row labels. Each label is a string of characters terminated by TAB (0x09). Read RowCount such strings in sequence. These are the row identifiers (e.g. '0', '1', '2' or custom labels).",
+      "fields": [
+        { "name": "labels", "type": { "kind": "string", "length": 0 }, "description": "RowCount entries; each entry is characters until TAB (0x09). No trailing NUL between entries; next entry starts after the TAB. Total byte length is variable." }
+      ]
+    },
+    "CellOffset": {
+      "kind": "struct",
+      "description": "One u16 per cell. Cell index = rowIndex * ColumnCount + colIndex (row-major). Offset is relative to the start of the string data block (after the data size u16). Point to the first byte of a null-terminated string; empty cell = offset to a NUL (length 0), often displayed as '****'.",
+      "fields": [
+        { "name": "offset", "type": "u16", "description": "Offset from start of data block to the null-terminated string for this cell." }
+      ]
+    }
+  },
+  "constants": {
+    "headerSize": 9
+  },
+  "sections": [
+    {
+      "name": "header",
+      "typeRef": "TwoDAHeader",
+      "offset": 0,
+      "size": 9,
+      "description": "Fixed 9-byte header. fileType must be '2DA ', fileVersion e.g. 'V2.b'. Byte at offset 8 is 0x0A (newline). Column list starts at byte 9."
+    },
+    {
+      "name": "body",
+      "offset": 9,
+      "size": "fileSize - 9",
+      "description": "From byte 9 to end of file. Order: (1) Column list: chars until NUL (0x00), column names separated by TAB (0x09). ColumnCount = number of names. (2) RowCount: u32. (3) Row index list: RowCount strings, each chars until TAB (0x09). (4) Offset table: ColumnCount * RowCount u16s (cell offsets relative to data block start). (5) Data size: u16. (6) Data block: that many bytes; null-terminated strings. Cell (row,col) string at dataBlockStart + offsetTable[row*ColumnCount+col]. Empty = offset to NUL, often shown as '****'. See layout steps for exact parsing."
+    }
+  ],
+  "layoutSteps": {
+    "title": "Parsing steps",
+    "steps": [
+      "Read header (9 bytes). Verify fileType is '2DA '.",
+      "From offset 9, read column list: collect characters into names, splitting on 0x09; stop at 0x00. ColumnCount = number of names.",
+      "After the NUL, read RowCount = next 4 bytes as u32.",
+      "Read RowCount row labels: for each of RowCount entries, read characters until 0x09. Record position after the last TAB as rowIndexListEnd.",
+      "CellCount = ColumnCount * RowCount. Read CellCount u16 values (offset table). offsetTableEnd = rowIndexListEnd + CellCount * 2.",
+      "Read dataSize = next u16. Data block starts at offsetTableEnd + 2 and is dataSize bytes long.",
+      "For cell (row, col), index i = row * ColumnCount + col. offset = offsetTable[i]. String starts at (data block start + offset); read until 0x00. Empty string is often displayed as '****'."
+    ]
+  }
+}

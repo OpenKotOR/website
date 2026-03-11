@@ -1,0 +1,72 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "KEY",
+  "description": "A KEY file is the master index used by KotOR I & II to find resources across one or more BIF archives. The game loads a single KEY (e.g. chitin.key) which lists every BIF file and every resource by name and type; when something is requested by resref and type, the KEY tells you which BIF file and which resource index inside that BIF.\n\nLayout: a 64-byte header with magic (\"KEY \"), version, the number of BIF files and the number of key entries, and offsets to the two tables. The file table comes first (one entry per BIF: size, offset to its filename in this file, filename length). The key table follows (one entry per resource: resref, type, and an encoded resId that packs the BIF index and the resource index within that BIF). Filenames are stored elsewhere in the file—each BIFEntry points to its filename with an offset and length.\n\nParsing: Read the header; use offsetToFileTable and bifCount to read the BIF table (bifCount × 12 bytes). Each BIFEntry gives you the BIF's file size and where its filename lives (filenameOffset, filenameSize)—read that many bytes at that offset to get the null-terminated path. Use offsetToKeyTable and keyCount to read the key table (keyCount × 22 bytes). To resolve resId: bifIndex = resId >> 20, resourceIndex = resId & 0xFFFFF (low 20 bits). Then open the BIF at bifIndex and read the resource at resourceIndex from that BIF.\n\nAll multi-byte integers are little-endian.",
+  "endianness": "little",
+  "encoding": "windows-1252",
+  "root": "Header",
+  "types": {
+    "Header": {
+      "kind": "struct",
+      "description": "64 bytes at the start. After the 4-byte file type (\"KEY \") and version, you get bifCount (how many BIF files), keyCount (how many resources total), and the two offsets. The file table has bifCount entries; the key table has keyCount entries. buildYear and buildDay are metadata; the last 32 bytes are reserved.",
+      "fields": [
+        { "name": "fileType", "type": { "kind": "string", "length": 4 }, "description": "Must be 'KEY ' (4 chars, space-padded)." },
+        { "name": "fileVersion", "type": { "kind": "string", "length": 4 }, "description": "Version; e.g. 'V1  '." },
+        { "name": "bifCount", "type": "u32", "description": "Number of BIF files listed in the file table." },
+        { "name": "keyCount", "type": "u32", "description": "Number of resource keys in the key table." },
+        { "name": "offsetToFileTable", "type": "u32", "description": "File offset where the BIF file table starts. Table size = bifCount × 12 bytes." },
+        { "name": "offsetToKeyTable", "type": "u32", "description": "File offset where the key table starts. Table size = keyCount × 22 bytes." },
+        { "name": "buildYear", "type": "u32", "description": "Build year (e.g. years since 1900); metadata." },
+        { "name": "buildDay", "type": "u32", "description": "Day of year (1–366); metadata." },
+        { "name": "reserved", "type": { "kind": "bytes", "length": 32 }, "description": "Reserved; keep zero when writing." }
+      ]
+    },
+    "BIFEntry": {
+      "kind": "struct",
+      "description": "One BIF file reference (12 bytes). The filename is not stored here—filenameOffset is the byte offset within this KEY file where the filename string starts, and filenameSize is its length in bytes (including the null terminator if present). Read filenameSize bytes at filenameOffset to get the path (e.g. \"data\\models.bif\"). fileSize is the size in bytes of that BIF file. drives is a legacy field.",
+      "fields": [
+        { "name": "fileSize", "type": "u32", "description": "Size of the BIF file in bytes." },
+        { "name": "filenameOffset", "type": "u32", "description": "Offset in this KEY file where the BIF filename/path starts (null-terminated string)." },
+        { "name": "filenameSize", "type": "u16", "description": "Length of the filename in bytes (read this many bytes at filenameOffset)." },
+        { "name": "drives", "type": "u16", "description": "Legacy drive bits; often 0." }
+      ]
+    },
+    "KEYEntry": {
+      "kind": "struct",
+      "description": "One resource key (22 bytes). resRef is the resource name without extension, null-padded to 16 bytes—trim nulls when comparing or displaying. resType is the resource type ID (script, model, etc.). resId encodes which BIF and which resource in that BIF: bifIndex = resId >> 20 (high 12 bits), resourceIndexInBIF = resId & 0xFFFFF (low 20 bits). Use bifIndex to select the BIF from the file table, then use the BIF format to read the resource at resourceIndexInBIF.",
+      "fields": [
+        { "name": "resRef", "type": { "kind": "string", "length": 16 }, "description": "Resource name, no extension, null-padded. Trim trailing nulls." },
+        { "name": "resType", "type": "u16", "description": "Resource type ID (script, model, texture, etc.)." },
+        { "name": "resId", "type": "u32", "description": "Encoded: (bifIndex << 20) | resourceIndexInBIF. Decode with bifIndex = resId >> 20, resourceIndexInBIF = resId & 0xFFFFF." }
+      ]
+    }
+  },
+  "constants": {
+    "headerSize": 64,
+    "bifEntrySize": 12,
+    "keyEntrySize": 22
+  },
+  "sections": [
+    {
+      "name": "header",
+      "typeRef": "Header",
+      "offset": 0,
+      "size": 64,
+      "description": "Fixed 64-byte header. Read this first to get bifCount, keyCount, offsetToFileTable, and offsetToKeyTable. Check fileType and fileVersion before parsing the tables."
+    },
+    {
+      "name": "fileTable",
+      "typeRef": "BIFEntry",
+      "offset": "offsetToFileTable",
+      "size": "bifCount * 12",
+      "description": "BIF file table: bifCount entries, 12 bytes each. Entry i describes the i-th BIF. For each entry, read filenameSize bytes at filenameOffset (in this KEY file) to get the BIF path. You need this table to resolve resId in the key table to an actual file and resource index."
+    },
+    {
+      "name": "keyTable",
+      "typeRef": "KEYEntry",
+      "offset": "offsetToKeyTable",
+      "size": "keyCount * 22",
+      "description": "Key table: keyCount entries, 22 bytes each. Each entry gives a resource name (resRef), type (resType), and encoded location (resId). To find a resource by name and type, scan the key table for a matching resRef and resType, then decode resId to get bifIndex and resourceIndexInBIF; load the BIF at that index and read the resource at that index from the BIF."
+    }
+  ]
+}

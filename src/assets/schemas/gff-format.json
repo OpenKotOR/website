@@ -1,0 +1,213 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "GFF",
+  "description": "GFF is the generic data format behind most KotOR and Aurora Engine resources—creatures, items, dialogs, areas, and so on. Because data is looked up by name (label) instead of by position in the file, new fields can be added later without breaking older tools or saves.\n\nThink of a GFF as a tree: the root is a single struct (stored as the first struct in the file), and it holds fields. Those fields can be simple values (numbers, a short string), or they can be another struct, or a list of structs. Each field has a name (a label, up to 16 characters) and a type. List entries are structs without their own label; they're just ordered elements.\n\nThe root struct uses the sentinel type 0xFFFFFFFF. Every other struct has a numeric type ID that identifies what kind of record it is (e.g. creature, item).\n\nOn disk, the file starts with a 56-byte header that gives the location and size of six blocks: the struct list, the field list, the label list, a blob of variable-length field data, the field-indices list, and the list-indices list. All offsets and sizes are 4-byte little-endian integers.",
+  "endianness": "little",
+  "encoding": "windows-1252",
+  "root": "Header",
+  "types": {
+    "Header": {
+      "kind": "struct",
+      "description": "56 bytes at the start of the file. First come two 4-byte magic strings (file type like \"UTC \" or \"GFF \", and version \"V3.2\"), then six pairs of u32: for each of the six following blocks, an offset from the start of the file and either an element count or a size in bytes.",
+      "fields": [
+        { "name": "fileType", "type": { "kind": "string", "length": 4 }, "description": "Magic; usually the extension in caps plus a space (e.g. 'DLG ', 'UTI ')." },
+        { "name": "fileVersion", "type": { "kind": "string", "length": 4 }, "description": "Format version; expect 'V3.2'." },
+        { "name": "structOffset", "type": "u32", "description": "File offset of the struct list." },
+        { "name": "structCount", "type": "u32", "description": "Number of structs; at least 1 (the root)." },
+        { "name": "fieldOffset", "type": "u32", "description": "File offset of the field list." },
+        { "name": "fieldCount", "type": "u32", "description": "Number of field records." },
+        { "name": "labelOffset", "type": "u32", "description": "File offset of the label list." },
+        { "name": "labelCount", "type": "u32", "description": "Number of label slots." },
+        { "name": "fieldDataOffset", "type": "u32", "description": "File offset of the variable-length field-data blob." },
+        { "name": "fieldDataCount", "type": "u32", "description": "Length in bytes of the field-data blob." },
+        { "name": "fieldIndicesOffset", "type": "u32", "description": "File offset of the field-indices block." },
+        { "name": "fieldIndicesCount", "type": "u32", "description": "Length in bytes of the field-indices block." },
+        { "name": "listIndicesOffset", "type": "u32", "description": "File offset of the list-indices block." },
+        { "name": "listIndicesCount", "type": "u32", "description": "Length in bytes of the list-indices block." }
+      ]
+    },
+    "StructEntry": {
+      "kind": "struct",
+      "description": "One struct is 12 bytes. The first struct in the file (index 0) is the root and has type 0xFFFFFFFF. To find which fields belong to this struct: when fieldCount is 1, dataOrDataOffset is the field's index; when fieldCount is greater than 1, dataOrDataOffset is a byte offset into the field-indices block—read that many u32s there to get the field indices.",
+      "fields": [
+        { "name": "type", "type": "u32", "description": "Numeric type ID for this struct; root uses 0xFFFFFFFF." },
+        { "name": "dataOrDataOffset", "type": "u32", "description": "Either the single field index (if fieldCount is 1) or a byte offset into field-indices where the field indices are stored." },
+        { "name": "fieldCount", "type": "u32", "description": "How many fields this struct has (0, 1, or more)." }
+      ]
+    },
+    "FieldEntry": {
+      "kind": "struct",
+      "description": "One field is 12 bytes. The field's name comes from the label list at labelIndex. What dataOrDataOffset means depends on the type: for small types (byte, short, int, float, etc.) the value sits in those 4 bytes; for strings, vectors, and other variable-size data it's an offset into the field-data block; for a nested struct it's an index into the struct list; for a list it's an offset into the list-indices block (or 0xFFFFFFFF if the list is empty).",
+      "fields": [
+        { "name": "type", "type": "GFFDataType", "description": "Which kind of data this field holds; see GFFDataType." },
+        { "name": "labelIndex", "type": "u32", "description": "Index into the label list for this field's name." },
+        { "name": "dataOrDataOffset", "type": "u32", "description": "Either the inline value (for simple types), an offset into field-data (for strings, blob, vector, etc.), a struct index (for STRUCT), or a list-indices offset (for LIST; 0xFFFFFFFF = empty)." }
+      ]
+    },
+    "LabelEntry": {
+      "kind": "struct",
+      "description": "Labels are 16 bytes each, padded with nulls and not null-terminated—so a 16-character name uses all 16 bytes. The same label can be reused by many fields (they share one slot in the label list), but the list itself has no duplicates. Two fields in the same struct must have different labels.",
+      "fields": [
+        { "name": "name", "type": { "kind": "string", "length": 16 }, "description": "Field name; strip trailing nulls when displaying." }
+      ]
+    },
+    "GFFDataType": {
+      "kind": "enum",
+      "description": "Types that fit in 4 bytes (BYTE through INT, FLOAT) store their value directly in the field record. The rest use the field's data word as an offset or index: into the field-data block for strings and blobs, into the struct list for STRUCT, into the list-indices block for LIST. ORIENTATION and VECTOR are KotOR/Aurora extensions for quaternions and 3D vectors.",
+      "base": "u32",
+      "values": {
+        "BYTE": 0,
+        "CHAR": 1,
+        "WORD": 2,
+        "SHORT": 3,
+        "DWORD": 4,
+        "INT": 5,
+        "DWORD64": 6,
+        "INT64": 7,
+        "FLOAT": 8,
+        "DOUBLE": 9,
+        "CEXOSTRING": 10,
+        "RESREF": 11,
+        "CEXOLOCSTRING": 12,
+        "VOID": 13,
+        "STRUCT": 14,
+        "LIST": 15,
+        "ORIENTATION": 16,
+        "VECTOR": 17
+      }
+    },
+    "CExoStringData": {
+      "kind": "struct",
+      "description": "How a CExoString is stored in the field-data block: a 4-byte character count, then that many bytes of text. No null terminator. Keeping strings under 1024 characters is recommended.",
+      "fields": [
+        { "name": "size", "type": "u32", "description": "Character count (no terminator)." },
+        { "name": "value", "type": { "kind": "string", "length": "size" }, "description": "Raw character bytes." }
+      ]
+    },
+    "ResRefData": {
+      "kind": "struct",
+      "description": "Resource reference in the field-data block: one byte for length (max 16), then that many characters. Used for filenames (models, textures, etc.); typically stored lowercase. No null terminator.",
+      "fields": [
+        { "name": "size", "type": "u8", "description": "Character count (0–16)." },
+        { "name": "value", "type": { "kind": "string", "length": "size" }, "description": "Filename characters." }
+      ]
+    },
+    "CExoLocStringData": {
+      "kind": "struct",
+      "description": "Localized string in the field-data block. totalSize is the byte length of everything after the first 4 bytes. stringRef is an index into dialog.tlk (-1 means ignore TLK). stringCount is how many embedded substrings follow; each substring has a StringID (encoding language and gender), a length, and the text. StringID = 2 × LanguageId + gender (0 or 1).",
+      "fields": [
+        { "name": "totalSize", "type": "u32", "description": "Bytes in this locstring after this field." },
+        { "name": "stringRef", "type": "s32", "description": "TLK index; -1 to use only embedded substrings." },
+        { "name": "stringCount", "type": "u32", "description": "Number of substrings that follow." }
+      ]
+    },
+    "LocStringSubString": {
+      "kind": "struct",
+      "description": "One language/gender variant inside a CExoLocString. stringId encodes language and gender as 2×LanguageId + gender. Then comes the byte length and the text (no null).",
+      "fields": [
+        { "name": "stringId", "type": "s32", "description": "2× language ID + gender (0 or 1)." },
+        { "name": "stringLength", "type": "u32" },
+        { "name": "text", "type": { "kind": "string", "length": "stringLength" } }
+      ]
+    },
+    "LanguageId": {
+      "kind": "enum",
+      "description": "Language IDs used in localized strings and dialog.tlk. The substring StringID is 2× this value plus a gender bit.",
+      "base": "u32",
+      "values": {
+        "English": 0,
+        "French": 1,
+        "German": 2,
+        "Italian": 3,
+        "Spanish": 4,
+        "Polish": 5,
+        "Korean": 128,
+        "Chinese Traditional": 129,
+        "Chinese Simplified": 130,
+        "Japanese": 131
+      }
+    },
+    "VoidData": {
+      "kind": "struct",
+      "description": "Arbitrary bytes in the field-data block: a 4-byte size then that many data bytes. Use for custom or opaque data, not for dumping C structs—use proper GFF types for structured data.",
+      "fields": [
+        { "name": "size", "type": "u32", "description": "Number of data bytes following." },
+        { "name": "data", "type": { "kind": "bytes", "length": "size" } }
+      ]
+    },
+    "OrientationData": {
+      "kind": "struct",
+      "description": "Four floats (x, y, z, w) in the field-data block—typically a quaternion for rotation. 16 bytes, little-endian.",
+      "fields": [
+        { "name": "x", "type": "f32" },
+        { "name": "y", "type": "f32" },
+        { "name": "z", "type": "f32" },
+        { "name": "w", "type": "f32" }
+      ]
+    },
+    "VectorData": {
+      "kind": "struct",
+      "description": "Three floats (x, y, z) in the field-data block—e.g. position or direction. 12 bytes, little-endian.",
+      "fields": [
+        { "name": "x", "type": "f32" },
+        { "name": "y", "type": "f32" },
+        { "name": "z", "type": "f32" }
+      ]
+    }
+  },
+  "constants": {
+    "maxLabelLength": 16,
+    "maxCExoStringLength": 1024,
+    "maxResRefLength": 16,
+    "topLevelStructType": "0xFFFFFFFF",
+    "emptyListOffset": "0xFFFFFFFF"
+  },
+  "sections": [
+    {
+      "name": "header",
+      "typeRef": "Header",
+      "offset": 0,
+      "size": 56,
+      "description": "56-byte header: file type and version strings, then six (offset, count/size) pairs for the struct list, field list, label list, field-data blob, field-indices block, and list-indices block."
+    },
+    {
+      "name": "structArray",
+      "typeRef": "StructEntry",
+      "offset": "structOffset",
+      "size": "structCount * 12",
+      "description": "Flat list of struct records, 12 bytes apiece. Entry 0 is the root and holds the whole logical tree. To get a struct's fields, use its dataOrDataOffset and fieldCount as described in StructEntry."
+    },
+    {
+      "name": "fieldArray",
+      "typeRef": "FieldEntry",
+      "offset": "fieldOffset",
+      "size": "fieldCount * 12",
+      "description": "Flat list of all field records (12 bytes each). Each record has a type, a label index, and a data word whose meaning depends on the type—inline value, offset into field-data, struct index, or list offset."
+    },
+    {
+      "name": "labelArray",
+      "typeRef": "LabelEntry",
+      "offset": "labelOffset",
+      "size": "labelCount * 16",
+      "description": "All field names used in the file, 16 bytes per slot, null-padded. Fields refer to a slot by index; multiple fields can share a label."
+    },
+    {
+      "name": "fieldData",
+      "offset": "fieldDataOffset",
+      "size": "fieldDataCount",
+      "description": "Blob of variable-length data. When a field's type is a string, resref, locstring, void, 64-bit int, double, orientation, or vector, its data word is a byte offset into this block. The layout at that offset matches the type (see the type reference for each). Struct and list fields don't use this block—they store an index or offset elsewhere."
+    },
+    {
+      "name": "fieldIndices",
+      "offset": "fieldIndicesOffset",
+      "size": "fieldIndicesCount",
+      "description": "Packed u32s: each is an index into the field list. A struct with more than one field doesn't list them inline; instead its dataOrDataOffset points here, and you read the next N u32s (N = that struct's fieldCount) to get the field indices. Structs with zero or one field don't use this block."
+    },
+    {
+      "name": "listIndices",
+      "offset": "listIndicesOffset",
+      "size": "listIndicesCount",
+      "description": "Packed list data. For each list: one u32 (element count), then that many u32s (struct indices). A LIST field's data word is either 0xFFFFFFFF (empty) or a byte offset into this block where that count + indices live."
+    }
+  ]
+}

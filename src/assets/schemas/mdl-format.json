@@ -1,0 +1,334 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "MDL",
+  "description": "MDL (Model Definition) is the primary model format for KotOR I & II. An MDL file describes hierarchy, nodes (meshes, lights, emitters, references, etc.), animations, and controller keyframes. Vertex and per-vertex data are stored in a companion MDX (Model Data) file; the MDL references offsets and sizes into that MDX. Both files are typically loaded together: the MDL file header gives mdlDataSize and mdxDataSize; model data starts at offset 12 in the MDL and runs for mdlDataSize bytes; the MDX file contains raw geometry (vertices, normals, UVs, skin weights, etc.) and is interpreted using offsets and bitmaps stored in the MDL mesh nodes.\n\nLayout overview: The MDL starts with a 12-byte file header (binary flag, MDL data size, MDX data size). All subsequent offsets in the MDL that refer to \"model data\" are relative to offset 12 (modelDataOffset). The geometry header (at offset 12) contains engine identifiers (function pointers), model name, root node offset, node count, array definitions, and geometry type. The model header follows with classification, bounding box, scale, super model name, and animation array definition. A names array definition and optional names block follow. The node tree starts at rootNodeOffset; each node is read by first peeking the node type (u16), then dispatching to the appropriate node layout (base, mesh, skin, light, emitter, reference, AABB, dangly, saber, or anim placeholder). Controllers and keyframe data are stored in array definitions on each node. Animations are stored in an array of offsets; each animation repeats a geometry-header-like structure plus length, transition, event list, and its own node tree.\n\nParsing: Read file header; validate flagBinary is 0 (binary mode). Read geometry header (function pointers, name, root offset, node count, two unknown array definitions, refCount, geometryType, padding). Read model header (classification, subClassification, smoothing, fogged, childModelCount, animation array definition, parent pointer, bounding box, radius, scale; seek to absolute offset 148 then read superModelName). Read rootNodeOffset2, padding, mdxLength, mdxOffset, names array definition. Load name offsets and strings from the names array. Recursively read nodes starting at modelDataOffset + rootNodeOffset; for each node read type, then base node fields (position, quaternion, child array, controller arrays), then type-specific extension. Load animations from animation array definition (array of offsets; each animation has its own header and node tree). MDX data is read when processing mesh/skin nodes using MDXVertexOffset, MDXDataBitmap, etc., and the companion MDX file buffer.\n\nWriting: Build file header, geometry header, model header, names block, then emit node tree (each node type writes its block; controllers and child offsets must be laid out and array definitions filled). Append animation blocks and fill animation array definition. All multi-byte values are little-endian. String fields are null-padded to fixed length.",
+  "endianness": "little",
+  "encoding": "windows-1252",
+  "root": "File Header",
+  "includes": ["mdl-nodes.json"],
+  "layoutSteps": {
+    "title": "Model data layout",
+    "steps": [
+      "All offsets below are relative to model data start (file offset 12). Read Geometry Header (model data offset 0) and Model Header (model data offset 80) first to get Root Node Offset, Names Array Definition, and Animation Array Definition.",
+      "Names array: offset table and strings at Names Array Definition (see `Array Definition`, `Names Array Layout`).",
+      "Node tree at Root Node Offset: for each node read via `Node Type Dispatch` (Base Node + type extension); then read `Child Offset Array` and recurse into each child; then read `Controller Array Layout` and keyframe data at `Controller Keyframe Data Layout` for this node.",
+      "Per mesh (in node tree): face list at Face Array Definition (`Face Array Layout`), index list at Index Count Array Definition (`Index Array Layout`). Per skin: bone weights/indices and inverse bind pose at Skin Node Extension array definitions.",
+      "Animation array: at Animation Array Definition read `Animation Offset Array`. For each offset, read `Animation Record`; then for that animation read events at Events Array Definition (`Animation Events Layout`) and the animation's node tree at the record's Root Node Offset (same structure as main node tree).",
+      "MDX file: separate file (length = MDX Data Size). Per-mesh vertex data using each mesh node's MDX offsets and `MDX Vertex Layout`; no MDX file header."
+    ]
+  },
+  "types": {
+    "Engine": {
+      "kind": "enum",
+      "base": "u32",
+      "description": "Engine version from Geometry Header Function Pointer 0. K1=KotOR I, K2=KotOR II/TSL, K1_XBOX/K2_XBOX=Xbox variants.",
+      "values": {
+        "K1": 4273776,
+        "K2": 4285200,
+        "K1_XBOX": 4254992,
+        "K2_XBOX": 4285872
+      }
+    },
+    "ModelClass": {
+      "kind": "enum",
+      "base": "u8",
+      "description": "Model classification (Model Header Classification field).",
+      "values": {
+        "OTHER": 0,
+        "EFFECT": 1,
+        "TILE": 2,
+        "CREATURE": 4,
+        "DOOR": 8,
+        "LIGHTSABER": 16,
+        "PLACEABLE": 32,
+        "FLYER": 64
+      }
+    },
+    "MDXFlag": {
+      "kind": "bitflags",
+      "base": "u32",
+      "description": "MDX per-vertex data bitmap (Mesh Node Extension MDX Data Bitmap field). Which components exist in each vertex block.",
+      "bits": {
+        "VERTEX": 1,
+        "UV1": 2,
+        "UV2": 4,
+        "UV3": 8,
+        "UV4": 16,
+        "NORMAL": 32,
+        "COLOR": 64,
+        "TANGENT1": 128,
+        "TANGENT2": 256,
+        "TANGENT3": 512,
+        "TANGENT4": 1024
+      }
+    },
+    "File Header": {
+      "kind": "struct",
+      "description": "First 12 bytes of the MDL file. Must be binary (Flag Binary = 0). Model data starts at offset 12 and is MDL Data Size bytes; the companion MDX file holds raw geometry and is MDX Data Size bytes.",
+      "fields": [
+        { "name": "Flag Binary", "type": "u32", "offset": 0, "description": "Format marker. Must be 0 for binary MDL files; non-zero indicates an unsupported ASCII/legacy variant." },
+        { "name": "MDL Data Size", "type": "u32", "offset": 4, "description": "Byte length of the MDL model-data region starting at file offset 12 (everything after this header)." },
+        { "name": "MDX Data Size", "type": "u32", "offset": 8, "description": "Byte length of the companion MDX file’s raw geometry data." }
+      ]
+    },
+    "Array Definition": {
+      "kind": "struct",
+      "description": "Used throughout to describe an array: offset (relative to model data start) and one or two element counts. Total 12 bytes. The array itself begins at modelDataOffset + Offset.",
+      "fields": [
+        { "name": "Offset", "type": "u32", "offset": 0, "description": "Byte offset from the start of the model-data region (file offset 12) to the first element of the array." },
+        { "name": "Count", "type": "u32", "offset": 4, "description": "Number of elements in the array at modelDataOffset + Offset." },
+        { "name": "Count 2", "type": "u32", "offset": 8, "description": "Secondary element count; meaning depends on the array (often duplicates Count or encodes a related size)." }
+      ]
+    },
+    "Names Array Layout": {
+      "kind": "struct",
+      "description": "Layout of the names block (see Names Array Definition). At modelDataOffset + Array Definition.offset: Count x u32 (offsets relative to model data start). Name[i] is the null-terminated string at modelDataOffset + offsets[i]. Encoding is the format encoding (e.g. windows-1252).",
+      "fields": []
+    },
+    "Animation Offset Array": {
+      "kind": "struct",
+      "description": "Layout of the animation list (see Animation Array Definition). At modelDataOffset + Array Definition.offset: Count x u32. Each u32 is an offset (relative to model data start) to an Animation Record. Read animations by seeking to modelDataOffset + offset[i] and parsing Animation Record.",
+      "fields": []
+    },
+    "Child Offset Array": {
+      "kind": "struct",
+      "description": "Per-node child list (see Base Node Child Array Definition). At modelDataOffset + Child Array Definition.offset: Count x u32. Each u32 is an offset (relative to model data start) to the next node. Recursively read each child node at modelDataOffset + offset.",
+      "fields": []
+    },
+    "Controller Array Layout": {
+      "kind": "struct",
+      "description": "Per-node controller list (see Base Node Controller Array Definition). At modelDataOffset + Controller Array Definition.offset: Count x Controller Record (16 bytes each). Keyframe data for all controllers on this node is stored at Controller Data Array Definition (see Controller Keyframe Data Layout).",
+      "fields": []
+    },
+    "Geometry Header": {
+      "kind": "struct",
+      "description": "Starts at file offset 12. Mirrors an engine-side geometry header: two function pointers (first is an engine identifier), then the model name, root node offset, node count, and a small set of engine flags.",
+      "fields": [
+        { "name": "Function Pointer 0", "type": "Engine", "offset": 0, "description": "Engine identifier baked in as a function address (see Engine enum for known values)." },
+        { "name": "Function Pointer 1", "type": "u32", "offset": 4, "description": "Second engine function address; not currently interpreted by tools." },
+        { "name": "Model Name", "type": { "kind": "string", "length": 32 }, "offset": 8, "description": "32-byte model name, null-padded. Usually matches the resource name without extension." },
+        { "name": "Root Node Offset", "type": "u32", "offset": 40, "description": "Offset (relative to model-data start) to the root node of the main node tree." },
+        { "name": "Node Count", "type": "u32", "offset": 44, "description": "Total number of nodes in the model’s main node tree." },
+        { "name": "Unknown 1 Array Definition", "type": "Array Definition", "offset": 48, "description": "First unknown array; 12-byte Array Definition. Observed but not interpreted by current tools." },
+        { "name": "Unknown 2 Array Definition", "type": "Array Definition", "offset": 60, "description": "Second unknown array; 12-byte Array Definition. Observed but not interpreted by current tools." },
+        { "name": "Ref Count", "type": "u32", "offset": 72, "description": "Number of reference nodes or related references used by this model (exact semantics unknown)." },
+        { "name": "Geometry Type", "type": "u8", "offset": 76, "description": "One-byte geometry type flag; distinguishes model variants (usage not fully understood)." },
+        { "name": "Unknown 4", "type": { "kind": "bytes", "length": 3 }, "offset": 77, "description": "Three padding/unknown bytes following Geometry Type; always zero in known files." }
+      ]
+    },
+    "Model Header": {
+      "kind": "struct",
+      "description": "Model-level metadata: classification and flags, bounding volumes, scale, supermodel linkage, and pointers to the MDX data, names array, and animation list.",
+      "fields": [
+        { "name": "Classification", "type": "ModelClass", "offset": 92, "description": "High-level model category (creature, placeable, tile, etc.); see ModelClass enum." },
+        { "name": "Sub Classification", "type": "u8", "offset": 93, "description": "Secondary classification flag used by the engine for more specific behavior (semantics not fully known)." },
+        { "name": "Smoothing", "type": "u8", "offset": 94, "description": "Smoothing/vertex-normal behavior flag; non-zero typically enables smoothed shading." },
+        { "name": "Fogged", "type": "u8", "offset": 95, "description": "Boolean flag controlling whether this model is affected by area fog." },
+        { "name": "Child Model Count", "type": "u32", "offset": 96, "description": "Number of child models attached to this model (for multi-part or composite models)." },
+        { "name": "Animation Array Definition", "type": "Array Definition", "offset": 100, "description": "Array Definition describing the list of animations (offset and count for the animation offset table)." },
+        { "name": "Parent Model Pointer", "type": "u32", "offset": 112, "description": "Pointer used by the engine for parent model linkage; not used by external tools." },
+        { "name": "Bounding Min X", "type": "f32", "offset": 116, "description": "Minimum X coordinate of the model’s axis-aligned bounding box, in model space." },
+        { "name": "Bounding Min Y", "type": "f32", "offset": 120, "description": "Minimum Y coordinate of the model’s axis-aligned bounding box, in model space." },
+        { "name": "Bounding Min Z", "type": "f32", "offset": 124, "description": "Minimum Z coordinate of the model’s axis-aligned bounding box, in model space." },
+        { "name": "Bounding Max X", "type": "f32", "offset": 128, "description": "Maximum X coordinate of the model’s axis-aligned bounding box, in model space." },
+        { "name": "Bounding Max Y", "type": "f32", "offset": 132, "description": "Maximum Y coordinate of the model’s axis-aligned bounding box, in model space." },
+        { "name": "Bounding Max Z", "type": "f32", "offset": 136, "description": "Maximum Z coordinate of the model’s axis-aligned bounding box, in model space." },
+        { "name": "Radius", "type": "f32", "offset": 140, "description": "Bounding sphere radius that encloses the model; used for culling and collision." },
+        { "name": "Scale", "type": "f32", "offset": 144, "description": "Uniform scale factor applied to this model relative to its authoring units." },
+        { "name": "Super Model Name", "type": { "kind": "string", "length": 32 }, "offset": 148, "description": "Name of the supermodel to inherit animations from; empty if the model has no supermodel." },
+        { "name": "Root Node Offset 2", "type": "u32", "offset": 180, "description": "Second copy of the root node offset (relative to model data); matches Root Node Offset in the Geometry Header." },
+        { "name": "Padding", "type": "u32", "offset": 184, "description": "Reserved/padding u32 between Root Node Offset 2 and MDX info; currently unused." },
+        { "name": "MDX Length", "type": "u32", "offset": 188, "description": "Length in bytes of the MDX data referenced by MDX Offset." },
+        { "name": "MDX Offset", "type": "u32", "offset": 192, "description": "Offset within the logical MDX stream where this model’s vertex data begins (engine-relative)." },
+        { "name": "Names Array Definition", "type": "Array Definition", "offset": 196, "description": "Array Definition for the names block: offsets and count of node/name strings used by this model." }
+      ]
+    },
+    "Controller Record": {
+      "kind": "struct",
+      "description": "One controller (16 bytes). Type selects which property this controller drives (position, rotation, alpha, etc.). Frame Count is the number of keyframes; Time Key Index and Data Value Index point into the shared controller data arrays; Column Count describes the number of value components per key (scalar, vector, quaternion, or Bezier). Keyframe data itself lives in the arrays described by Controller Data Array Definition.",
+      "fields": [
+        { "name": "Type", "type": "Controller Type", "offset": 0, "description": "Controller type ID; determines which property is animated (position, orientation, alpha, etc.). See Controller Type enum." },
+        { "name": "Unused Key Flag", "type": { "kind": "bytes", "length": 2 }, "offset": 4, "description": "Two-byte flag unused by known binaries; always skipped." },
+        { "name": "Frame Count", "type": "u16", "offset": 6, "description": "Number of keyframes for this controller; 0xFFFF means the controller has no data." },
+        { "name": "Time Key Index", "type": "u16", "offset": 8, "description": "Index into the shared controller float array where this controller’s time keys begin." },
+        { "name": "Data Value Index", "type": "u16", "offset": 10, "description": "Index into the shared controller float/int arrays where this controller’s first value column begins." },
+        { "name": "Column Count", "type": "u8", "offset": 12, "description": "Number of value components per key: 1=scalar, 2=packed orientation, 3=vector, 4=quaternion, 9=Bezier triplet." },
+        { "name": "Padding", "type": { "kind": "bytes", "length": 3 }, "offset": 13, "description": "Three padding bytes following Column Count; unused." }
+      ]
+    },
+    "Controller Type": {
+      "kind": "enum",
+      "base": "s32",
+      "description": "Controller type IDs. Same integer can denote different semantics per node type (e.g. 88=BirthRate on Emitter, Radius on Light; 100=SelfIllumColor on Mesh, Drag on Emitter, VerticalDisplacement on Light; 132=Alpha on Mesh, P2P_Bezier3 on Emitter; 140=Multiplier on Light, RandomVelocity on Emitter). Node: Position(8), Orientation(20), Scale(36). Mesh: SelfIllumColor(100), Alpha(132). Light: Color(76), Radius(88), ShadowRadius(96), VerticalDisplacement(100), Multiplier(140). Emitter: AlphaEnd(80), AlphaStart(84), BirthRate(88), Bounce_Co(92), CombineTime(96), Drag(100), FPS(104), FrameEnd(108), FrameStart(112), Gravity(116), LifeExp(120), Mass(124), Threshold(164), P2P_Bezier2(128), P2P_Bezier3(132), ParticleRot(136), RandomVelocity(140), SizeStart(144), SizeEnd(148), SizeStart_Y(152), SizeEnd_Y(156), Spread(160), Velocity(168), XSize(172), YSize(176), BlurLength(180), LightningDelay(184), LightningRadius(188), LightningSubDiv(196), LightningScale(192), LightningZigZag(200), AlphaMid(216), PercentStart(220), PercentMid(224), PercentEnd(228), SizeMid(232), SizeMid_Y(236), TargetSize(252), ControlPTCount(256), ControlPTRadius(260), ControlPTDelay(264), TangentSpread(268), TangentLength(272), RandomBirthRate(240), ColorEnd(380), ColorMid(284), ColorStart(376), ColorStart_392(392), Detonate(502). INVALID(0).",
+      "values": {
+        "INVALID": 0,
+        "Position": 8,
+        "Orientation": 20,
+        "Scale": 36,
+        "Color": 76,
+        "AlphaEnd": 80,
+        "AlphaStart": 84,
+        "BirthRate": 88,
+        "Bounce_Co": 92,
+        "CombineTime": 96,
+        "Drag": 100,
+        "FPS": 104,
+        "FrameEnd": 108,
+        "FrameStart": 112,
+        "Gravity": 116,
+        "LifeExp": 120,
+        "Mass": 124,
+        "P2P_Bezier2": 128,
+        "P2P_Bezier3": 132,
+        "ParticleRot": 136,
+        "RandomVelocity": 140,
+        "SizeStart": 144,
+        "SizeEnd": 148,
+        "SizeStart_Y": 152,
+        "SizeEnd_Y": 156,
+        "Spread": 160,
+        "Threshold": 164,
+        "Velocity": 168,
+        "XSize": 172,
+        "YSize": 176,
+        "BlurLength": 180,
+        "LightningDelay": 184,
+        "LightningRadius": 188,
+        "LightningScale": 192,
+        "LightningSubDiv": 196,
+        "LightningZigZag": 200,
+        "AlphaMid": 216,
+        "PercentStart": 220,
+        "PercentMid": 224,
+        "PercentEnd": 228,
+        "SizeMid": 232,
+        "SizeMid_Y": 236,
+        "RandomBirthRate": 240,
+        "TargetSize": 252,
+        "ControlPTCount": 256,
+        "ControlPTRadius": 260,
+        "ControlPTDelay": 264,
+        "TangentSpread": 268,
+        "TangentLength": 272,
+        "ColorMid": 284,
+        "ColorStart": 392,
+        "ColorEnd": 380,
+        "ShadowRadius": 96,
+        "Detonate": 502
+      }
+    },
+    "Animation Record": {
+      "kind": "struct",
+      "description": "One animation block. Begins with a geometry-like header (function pointers, name, root node, node count), followed by animation-specific fields (length, transition, model name), the events array definition, and a trailing unknown field.",
+      "fields": [
+        { "name": "Function Pointer 0", "type": "u32", "offset": 0, "description": "Animation-specific engine function address (mirrors geometry header layout; not interpreted by tools)." },
+        { "name": "Function Pointer 1", "type": "u32", "offset": 4, "description": "Second animation function address; not interpreted." },
+        { "name": "Animation Name", "type": { "kind": "string", "length": 32 }, "offset": 8, "description": "Name of this animation, 32-byte null-padded string (e.g. 'walk', 'run', 'pause1')." },
+        { "name": "Root Node Offset", "type": "u32", "offset": 40, "description": "Offset (relative to model data) to this animation’s root node in the animation node tree." },
+        { "name": "Node Count", "type": "u32", "offset": 44, "description": "Number of nodes in this animation’s node tree." },
+        { "name": "Unknown Skip", "type": { "kind": "bytes", "length": 24 }, "offset": 48, "description": "Unknown 24-byte block reserved by the engine; always copied as-is." },
+        { "name": "Ref Count", "type": "u32", "offset": 72, "description": "Reference count / dependency value used by the engine; semantics not fully known." },
+        { "name": "Geometry Type", "type": "u8", "offset": 76, "description": "Geometry type flag for this animation; parallels the main Geometry Header’s Geometry Type." },
+        { "name": "Unknown 4", "type": { "kind": "bytes", "length": 3 }, "offset": 77, "description": "Three padding/unknown bytes after Geometry Type; typically zero." },
+        { "name": "Length", "type": "f32", "offset": 80, "description": "Animation length in seconds." },
+        { "name": "Transition", "type": "f32", "offset": 84, "description": "Recommended blend-in / transition time in seconds when entering this animation." },
+        { "name": "Model Name", "type": { "kind": "string", "length": 32 }, "offset": 88, "description": "Name of the model this animation targets, 32-byte null-padded string; usually matches the MDL’s model name." },
+        { "name": "Events Array Definition", "type": "Array Definition", "offset": 120, "description": "Array Definition locating the list of animation events (offset and count)." },
+        { "name": "Unknown UInt32", "type": "u32", "offset": 132, "description": "Trailing u32 with unknown purpose; preserved by tools but not interpreted." }
+      ]
+    },
+    "Animation Event": {
+      "kind": "struct",
+      "description": "One animation event. 36 bytes: an activation time plus a 32-byte event name.",
+      "fields": [
+        { "name": "Length", "type": "f32", "offset": 0, "description": "Time in seconds from the start of the animation when this event should fire." },
+        { "name": "Name", "type": { "kind": "string", "length": 32 }, "offset": 4, "description": "Event name string (32-byte, null-padded), such as 'hit', 'footstep', or other script hook." }
+      ]
+    },
+    "Animation Events Layout": {
+      "kind": "struct",
+      "description": "Per-animation event list (see Animation Record Events Array Definition). At modelDataOffset + Events Array Definition.offset: Count x Animation Event (36 bytes each).",
+      "fields": []
+    },
+    "Controller Keyframe Data Layout": {
+      "kind": "struct",
+      "description": "Controller keyframe data is stored at modelDataOffset + Controller Data Array Definition.offset. Two arrays: first Count floats (float array), then Count ints (int array). For each controller: Time Key Index and Data Value Index are indices into these arrays. Frame r: time = float[Time Key Index + r]. Data: if Column Count 1 then value = float[Data Value Index + r]. If 3 then vector = (float[Data Value Index + 3*r], float[Data Value Index + 3*r+1], float[Data Value Index + 3*r+2]). If 4 then quaternion = 4 floats. If 2 (Orientation packed) then one int = int[Data Value Index + r]; decode: x = (int & 0x7FF)/1023*2-1, y = ((int>>11)&0x7FF)/1023*2-1, z = ((int>>22)&0x3FF)/511*2-1; w = sqrt(1 - x^2 - y^2 - z^2) or 0. If 9 (Bezier) then 9 floats per frame: point A (3), B relative to A (3), C relative to A (3).",
+      "fields": []
+    }
+  },
+  "sections": [
+    {
+      "name": "mdlFileHeader",
+      "typeRef": "File Header",
+      "offset": 0,
+      "size": 12,
+      "description": "MDL file: first 12 bytes. Binary flag (must be 0), MDL Data Size, MDX Data Size. Model data starts at offset 12."
+    },
+    {
+      "name": "mdlGeometryHeader",
+      "typeRef": "Geometry Header",
+      "offset": 12,
+      "size": 80,
+      "description": "MDL file: geometry header. Engine ID, model name, root node offset, node count, geometry type. All following offsets in the MDL are relative to model data start (offset 12)."
+    },
+    {
+      "name": "mdlModelHeader",
+      "typeRef": "Model Header",
+      "offset": 92,
+      "size": 116,
+      "description": "MDL file: model header. Classification, bounding box, scale, Super Model Name (at file offset 148), Root Node Offset 2, MDX offset/size. Names Array Definition (offset/count) in this header points to the Names section; Animation Array Definition points to the Animations section."
+    },
+    {
+      "name": "mdlNamesArrayData",
+      "typeRef": "Names Array Layout",
+      "offset": 208,
+      "size": 0,
+      "description": "Names array. Location and count from Model Header Names Array Definition (offset relative to model data start). Offset table (Count × u32) then null-terminated strings. See Type reference: Names Array Layout."
+    },
+    {
+      "name": "mdlAnimationsArrayData",
+      "offset": 208,
+      "size": 0,
+      "description": "Animation list. The Model Header's Animation Array Definition gives the location (offset relative to model data start) and count. At that offset you find Count × u32: each u32 is an offset (again relative to model data start) pointing to one Animation Record. To read: (1) Seek to modelDataOffset + Animation Array Definition.offset and read Count u32 values—these are the animation record offsets. (2) For each offset[i], seek to modelDataOffset + offset[i] and parse an Animation Record (header with name, length, transition, Events Array Definition, and Root Node Offset). (3) For that animation's events, use the record's Events Array Definition: seek to modelDataOffset + Events Array Definition.offset and read Count × Animation Event. (4) The animation's node tree starts at the record's Root Node Offset (same recursive structure as the main Node tree section).",
+      "typeLinks": [
+        "Array Definition",
+        "Animation Offset Array",
+        "Animation Record",
+        "Animation Event",
+        "Animation Events Layout"
+      ]
+    },
+    {
+      "name": "mdlNodeTree",
+      "offset": 208,
+      "size": 0,
+      "description": "Recursive node tree. Start at model data offset from Geometry Header Root Node Offset (or Model Header Root Node Offset 2). For each node: (1) Peek Node Type (u16) and dispatch in fixed order—see Node Type Dispatch. (2) Read the node: Base Node (all types), then type-specific extension if present (Mesh, Skin, Emitter, Light, Reference, AABB, Dangly, Saber). Anim (0x80) is a 56-byte placeholder; skip and do not add to tree. (3) Read Child Offset Array and recurse for each child. (4) Read Controller Array Layout and Controller Keyframe Data Layout for this node. Node names come from the Names section (index = Node Position).",
+      "typeLinks": [
+        "Node Type",
+        "Node Type Dispatch",
+        "Base Node",
+        "BaseNode",
+        "Skin Node Extension",
+        "Emitter Node Extension",
+        "Light Node Extension",
+        "Reference Node Extension",
+        "AABB Node Extension",
+        "AABB Tree Node",
+        "Dangly Node Extension",
+        "Saber Node Extension",
+        "Face Record",
+        "Face Array Layout",
+        "Index Array Layout",
+        "Child Offset Array",
+        "Controller Array Layout",
+        "Controller Keyframe Data Layout"
+      ]
+    },
+    {
+      "name": "mdxFile",
+      "offset": 0,
+      "size": 0,
+      "description": "MDX file: companion file, length = MDX Data Size from MDL file header. Raw binary: per-mesh vertex blocks (positions, normals, UVs, colors, skin weights) laid out per mesh node's MDX Data Bitmap and offsets. No separate header; read using mesh node's MDX Vertex Offset, MDX Data Size, and MDX Vertex Layout."
+    }
+  ]
+}

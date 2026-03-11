@@ -1,0 +1,61 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "RIM",
+  "description": "RIM (Resource Image) is a simple archive format used by KotOR I & II. Like ERF, it bundles multiple resources into one file, but with a single flat table: each entry has a name (resref), type, id, and the file offset and size of its raw data. There is no separate key list and resource list—each of the resourceCount entries gives you both the identity and the location.\n\nLayout: 160-byte header with magic (\"RIM \"), version, a reserved u32, resourceCount, and resourcesOffset (where the resource table starts). The rest of the header is reserved. The resource table starts at resourcesOffset and has resourceCount entries of 34 bytes each (resref, resType, unused, resId, offset, size, plus 2 bytes padding). Resource data starts immediately after the table at (resourcesOffset + resourceCount×34); each entry's offset points into that region (or later in the file).\n\nParsing: Read the header. The resource table is at resourcesOffset, size resourceCount×34 bytes. For each entry, resRef is the resource name (trim nulls), resType is the type ID, offset and size give the byte range in the file. To extract resource i: read ResourceEntry at resourcesOffset + i×34, then read size bytes from the file at offset.\n\nWriting: Build the resource table (name, type, id, offset, size for each resource). Pack all resource payloads back-to-back after the table; set each entry's offset to where that resource's data starts and size to its length. Write the table, then the payloads, then the header with resourceCount and resourcesOffset (typically 160). All multi-byte integers are little-endian.",
+  "endianness": "little",
+  "encoding": "windows-1252",
+  "root": "Header",
+  "types": {
+    "Header": {
+      "kind": "struct",
+      "description": "160 bytes at the start. fileType is \"RIM \", fileVersion is the format version. The first u32 after version is unused (reserved). resourceCount is how many resources are in the archive; resourcesOffset is the file offset of the resource table. The table is resourceCount×34 bytes; resource data starts at resourcesOffset + resourceCount×34. The remaining 140 bytes of the header are reserved.",
+      "fields": [
+        { "name": "fileType", "type": { "kind": "string", "length": 4 }, "description": "Must be 'RIM ' (4 chars, space-padded)." },
+        { "name": "fileVersion", "type": { "kind": "string", "length": 4 }, "description": "Version; e.g. 'V1.0'." },
+        { "name": "reserved", "type": "u32", "description": "Unused; keep 0 when writing." },
+        { "name": "resourceCount", "type": "u32", "description": "Number of resources. Resource table size = resourceCount × 34 bytes." },
+        { "name": "resourcesOffset", "type": "u32", "description": "File offset where the resource table starts. Usually 160. Resource data starts at resourcesOffset + resourceCount×34." },
+        { "name": "reserved2", "type": { "kind": "bytes", "length": 140 }, "description": "Reserved; keep zero when writing." }
+      ]
+    },
+    "ResourceEntry": {
+      "kind": "struct",
+      "description": "One resource entry (34 bytes). resRef is the resource name without extension, null-padded to 16 bytes—trim nulls when displaying. resType is the resource type ID; unused and the 2-byte padding are reserved. resId is a resource ID. offset is the file offset (from start of file) where this resource's data begins; size is how many bytes to read. To extract: read size bytes at offset.",
+      "fields": [
+        { "name": "resRef", "type": { "kind": "string", "length": 16 }, "description": "Resource name, no extension, null-padded. Trim trailing nulls." },
+        { "name": "resType", "type": "u16", "description": "Resource type ID." },
+        { "name": "unused", "type": "u16", "description": "Reserved; keep 0 when writing." },
+        { "name": "resId", "type": "u32", "description": "Resource ID." },
+        { "name": "offset", "type": "u32", "description": "File offset where this resource's data starts." },
+        { "name": "size", "type": "u32", "description": "Length of this resource's data in bytes." },
+        { "name": "padding", "type": { "kind": "bytes", "length": 2 }, "description": "Padding to 34 bytes total; keep 0 when writing." }
+      ]
+    }
+  },
+  "constants": {
+    "headerSize": 160,
+    "resourceEntrySize": 34
+  },
+  "sections": [
+    {
+      "name": "header",
+      "typeRef": "Header",
+      "offset": 0,
+      "size": 160,
+      "description": "Fixed 160-byte header. Read to get resourceCount and resourcesOffset. The resource table starts at resourcesOffset and has resourceCount entries."
+    },
+    {
+      "name": "resourceTable",
+      "typeRef": "ResourceEntry",
+      "offset": "resourcesOffset",
+      "size": "resourceCount * 34",
+      "description": "Resource table: resourceCount entries, 34 bytes each. Entry i is at resourcesOffset + i×34. Each entry gives resRef, resType, resId, offset, and size. Resource payloads start at resourcesOffset + resourceCount×34; each offset in the table points into that region."
+    },
+    {
+      "name": "fileData",
+      "offset": "resourcesOffset + resourceCount * 34",
+      "size": 0,
+      "description": "Raw resource data. All resource payloads are stored here (and possibly beyond). Each resource's offset and size in the resource table point into this region. To extract resource i, read its ResourceEntry then read size bytes at offset from the start of the file."
+    }
+  ]
+}

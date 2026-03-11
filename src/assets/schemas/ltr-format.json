@@ -1,0 +1,61 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "LTR",
+  "description": "LTR (Letter) files store Markov chain probability tables used by KotOR I & II for random name generation (e.g. character names, planet names). Each table index is a character index (0 to charCount−1); you decode indices to characters using an alphabet—either 26 letters (a–z) or 28 (a–z plus apostrophe and hyphen), chosen by charCount in the header.\n\nThe file has three sections of probability data: single-character chain (start and transition probs for one character), double-character chain (given two preceding characters), and triple-character chain (given three). Each \"block\" holds three rows of charCount floats (row 0, 1, 2); the layout and size of each section depend on charCount. The constants alphabet_26 and alphabet_28 give the character for each index: index i → character at position i in the chosen string.\n\nParsing: Read the 9-byte header (fileType \"LTR \", fileVersion, charCount). If charCount is 26 use alphabet_26, if 28 use alphabet_28. Single chain: 12×charCount bytes (one block). Double chain: 12×charCount×charCount bytes (charCount blocks). Triple chain: 12×charCount³ bytes (charCount² blocks). All floats are little-endian. To generate a name you typically sample the chains to get a sequence of indices, then map each index to the character at that position in the alphabet (often capitalizing the first character).\n\nWriting: Pick charCount (26 or 28), build the three probability tables (each entry a float 0–1), then write header and the three sections in order. Floats are 4 bytes, little-endian.",
+  "endianness": "little",
+  "root": "Header",
+  "constants": {
+    "alphabet_26": "abcdefghijklmnopqrstuvwxyz",
+    "alphabet_28": "abcdefghijklmnopqrstuvwxyz'-"
+  },
+  "types": {
+    "Header": {
+      "kind": "struct",
+      "description": "9 bytes at the start. fileType is \"LTR \", fileVersion is the format version. charCount is either 26 (use alphabet_26 for index→character) or 28 (use alphabet_28). Every probability table index in the file is in the range 0 to charCount−1; to get the character for index i, take the character at position i in the chosen alphabet string.",
+      "fields": [
+        { "name": "fileType", "type": { "kind": "string", "length": 4 }, "description": "Must be 'LTR ' (4 chars, space-padded)." },
+        { "name": "fileVersion", "type": { "kind": "string", "length": 4 }, "description": "Version string." },
+        { "name": "charCount", "type": "u8", "description": "Alphabet size: 26 (a–z) or 28 (a–z + ' and -). Determines which alphabet string to use when decoding indices to characters." }
+      ]
+    },
+    "ChainBlock": {
+      "kind": "struct",
+      "description": "One block of transition probabilities: three rows of charCount floats each (row0, row1, row2). Total size is 12×charCount bytes (3×charCount×4 bytes per float). Used as the building block for single, double, and triple chains; the number of blocks and their layout vary by section.",
+      "fields": [
+        { "name": "row0", "type": "f32", "count": "charCount", "description": "First row of charCount probabilities (4 bytes each)." },
+        { "name": "row1", "type": "f32", "count": "charCount", "description": "Second row of charCount probabilities." },
+        { "name": "row2", "type": "f32", "count": "charCount", "description": "Third row of charCount probabilities." }
+      ]
+    }
+  },
+  "sections": [
+    {
+      "name": "header",
+      "typeRef": "Header",
+      "offset": 0,
+      "size": 9,
+      "description": "Fixed 9-byte header. Read fileType, fileVersion, and charCount. Use charCount to select the alphabet and to compute the size of each following section."
+    },
+    {
+      "name": "singleChain",
+      "typeRef": "ChainBlock",
+      "offset": 9,
+      "size": "12 * charCount",
+      "description": "Single-character Markov chain: one ChainBlock (3 rows × charCount floats). Size = 12×charCount bytes. Contains start/transition probabilities for generating the first character and single-step transitions."
+    },
+    {
+      "name": "doubleChain",
+      "typeRef": "ChainBlock",
+      "offset": "9 + 12 * charCount",
+      "size": "12 * charCount * charCount",
+      "description": "Double-character chain: charCount blocks, each 12×charCount bytes. Total size = 12×charCount×charCount. Each block gives transition probabilities given the previous two characters (as indices)."
+    },
+    {
+      "name": "tripleChain",
+      "typeRef": "ChainBlock",
+      "offset": "9 + 12 * charCount + 12 * charCount * charCount",
+      "size": "12 * charCount * charCount * charCount",
+      "description": "Triple-character chain: charCount² blocks, each 12×charCount bytes. Total size = 12×charCount³. Transition probabilities given the previous three characters (as indices)."
+    }
+  ]
+}

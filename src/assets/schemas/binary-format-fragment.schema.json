@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openkotor.com/schemas/binary-format-fragment.schema.json",
+  "title": "Binary Format Fragment",
+  "description": "A fragment file for binary format composition. Referenced by the main format's \"includes\" array. Defines only \"types\" and/or \"constants\"; merged in order (later overrides earlier).",
+  "$ref": "binary-format.schema.json#/$defs/formatFragment"
+}

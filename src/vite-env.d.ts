@@ -30,3 +30,8 @@ declare module '*.webp' {
   export default src;
 }
 
+declare module '*.json' {
+  const value: unknown;
+  export default value;
+}
+

@@ -189,7 +189,8 @@ a {
 // Header
 // =============================================================================
 
-header {
+// Site header (main nav) — scoped so format-doc <header> is not affected
+header.site-header {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -643,6 +644,75 @@ body.mobile-menu-open {
     cursor: pointer;
     font-weight: 800;
   }
+}
+
+// Formats section (list + detail)
+// =============================================================================
+
+.format-section__title {
+  font-size: clamp(22px, 3.2vw, 32px);
+  margin: 0 0 $spacing-sm;
+  letter-spacing: 0.4px;
+}
+
+.format-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  .card & {
+    padding: 0;
+  }
+}
+
+.format-list__item {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.format-list__link {
+  display: block;
+  padding: $spacing-lg;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(212, 175, 55, 0.08);
+  }
+}
+
+.format-list__name {
+  display: block;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.format-list__desc {
+  display: block;
+  font-size: 14px;
+}
+
+.format-detail__breadcrumb {
+  margin-bottom: $spacing-lg;
+  font-size: 14px;
+
+  a {
+    text-decoration: none;
+    color: inherit;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.format-detail__loading {
+  margin: 0;
 }
 
 // Footer

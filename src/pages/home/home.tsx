@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAppContext } from '../../hooks/useAppContext';
 import heroBanner from '../../assets/images/openkotor_hero_banner.jpg';
 
@@ -5,6 +7,18 @@ export default function Home() {
   const { state } = useAppContext();
   const { inviteUrl } = state.config;
   const { online, presenceCount, isLoading, error } = state.discord;
+  const { hash } = useLocation();
+
+  // Scroll to section when navigating from another page with hash (e.g. /#projects, /#faq)
+  useEffect(() => {
+    if (hash) {
+      const id = hash.slice(1);
+      const el = id ? document.getElementById(id) : null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [hash]);
 
   return (
     <>
@@ -23,12 +37,11 @@ export default function Home() {
                 <div className="muted" style={{ fontSize: 14 }}>File formats • Dialogue cameras • Pathfinding • Rendering • Tools</div>
                 <div style={{ height: 14 }} />
                 <div className="row" style={{ justifyContent: "center", gap: 10 }}>
-                  <span className="tag">ERF / RIM / MOD</span>
-                  <span className="tag">2DA</span>
-                  <span className="tag">GFF</span>
-                  <span className="tag">DLG cameras</span>
-                  <span className="tag">WOK / Walkmesh</span>
-                  <span className="tag">MDL/MDX</span>
+                  <span className="tag"><a href="/formats/erf">ERF</a> / <a href="/formats/rim">RIM</a> / <a href="/formats/erf">MOD</a></span>
+                  <span className="tag"><a href="/formats/2da">2DA</a></span>
+                  <span className="tag"><a href="/formats/gff">GFF</a></span>
+                  <span className="tag"><a href="/formats/bwm">WOK / Walkmesh</a></span>
+                  <span className="tag"><a href="/formats/mdl">MDL/MDX</a></span>
                 </div>
               </div>
             </div>

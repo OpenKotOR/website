@@ -1,0 +1,110 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "LYT",
+  "description": "LYT (Layout) is a plain-text format that defines module layout in KotOR I & II: which rooms exist, where they go, and how tracks, obstacles, and door hooks are placed. The file is ASCII (or UTF-8), line-based, with significant indentation. It is not binary—you parse it by reading lines and keywords.\n\nStructure, in order:\n1. First line must be exactly: #MAXLAYOUT ASCII\n2. filedependancy followed by a space and a path (e.g. a .max file)\n3. Line: beginlayout\n4. Rooms block: line \"   roomcount N\" (three spaces, then the number N). Then N data lines, each indented with 6 spaces: room_name x y z\n5. Tracks block: line \"   trackcount N\", then N lines of: name x y z\n6. Obstacles block: line \"   obstaclecount N\", then N lines of: name x y z\n7. Door hooks block: line \"   doorhookcount N\", then N lines of: room_name door_name number x y z qx qy qz qw\n8. Line: donelayout\n\nParsing: Read line by line. Expect the header and beginlayout, then parse each block by reading the \"   xxxcount N\" line and then N data lines. Indentation is significant (3 spaces for count lines, 6 for data lines). Numbers are decimal. Door hook lines have 10 tokens: room, door name, number, position x y z, quaternion qx qy qz qw.\n\nExample (indentation is significant):\n\n#MAXLAYOUT ASCII\nfiledependancy M02ae.max\nbeginlayout\n   roomcount 3\n      M02ae_09a 110.0 110.0 0.0\n      M02ae_05a 154.0 120.0 0.0\n      M02ae_01a 140.0 120.0 0.0\n   trackcount 0\n   obstaclecount 0\n   doorhookcount 2\n      M02ae_09a door_03 0 123.25 110.0 0.0 0.707107 0.0 0.0 -0.707107\n      M02ae_09a door_06 0 110.0 96.75 0.0 0.0 0.0 0.0 1.0\ndonelayout",
+  "endianness": "little",
+  "encoding": "utf-8",
+  "root": "Layout",
+  "constants": {
+    "header_line": "#MAXLAYOUT ASCII",
+    "begin_layout": "beginlayout",
+    "done_layout": "donelayout",
+    "room_count_prefix": "roomcount",
+    "track_count_prefix": "trackcount",
+    "obstacle_count_prefix": "obstaclecount",
+    "doorhook_count_prefix": "doorhookcount",
+    "filedependancy_prefix": "filedependancy "
+  },
+  "types": {
+    "Layout": {
+      "kind": "struct",
+      "description": "The file is line-based text, not binary. Parse in order: header line, filedependancy, beginlayout, then the four blocks (roomcount + rooms, trackcount + tracks, obstaclecount + obstacles, doorhookcount + doorhooks), then donelayout. Use the format description and constants for exact keywords and indentation. RoomEntry, TrackEntry, ObstacleEntry, and DoorHookEntry describe the format of each data line in the corresponding block.",
+      "fields": [
+        { "name": "structure", "type": "u8", "description": "Placeholder; LYT is text. See format description and section examples." }
+      ]
+    },
+    "RoomEntry": {
+      "kind": "struct",
+      "description": "One room per line. Line is 6 spaces, then room name (one token), then x y z as decimal numbers. Example: \"      M02ae_09a 110.0 110.0 0.0\"",
+      "fields": [
+        { "name": "name", "type": { "kind": "string" }, "description": "Room name, e.g. M02ae_09a" },
+        { "name": "x", "type": "f32", "description": "Position X" },
+        { "name": "y", "type": "f32", "description": "Position Y" },
+        { "name": "z", "type": "f32", "description": "Position Z" }
+      ]
+    },
+    "TrackEntry": {
+      "kind": "struct",
+      "description": "One track per line. Same format as room: 6 spaces, name, then x y z. Example: \"      track_name 0.0 0.0 0.0\"",
+      "fields": [
+        { "name": "name", "type": { "kind": "string" }, "description": "Track name" },
+        { "name": "x", "type": "f32" },
+        { "name": "y", "type": "f32" },
+        { "name": "z", "type": "f32" }
+      ]
+    },
+    "ObstacleEntry": {
+      "kind": "struct",
+      "description": "One obstacle per line. Same format as room: 6 spaces, name, then x y z. Example: \"      obstacle_name 50.0 50.0 0.0\"",
+      "fields": [
+        { "name": "name", "type": { "kind": "string" }, "description": "Obstacle name" },
+        { "name": "x", "type": "f32" },
+        { "name": "y", "type": "f32" },
+        { "name": "z", "type": "f32" }
+      ]
+    },
+    "DoorHookEntry": {
+      "kind": "struct",
+      "description": "One door hook per line. Line is 6 spaces, then: room name, door name, number (integer, often 0), x y z (position), qx qy qz qw (quaternion). Example: \"      M02ae_09a door_03 0 123.25 110.0 0.0 0.707107 0.0 0.0 -0.707107\"",
+      "fields": [
+        { "name": "room", "type": { "kind": "string" }, "description": "Room name, e.g. M02ae_09a" },
+        { "name": "name", "type": { "kind": "string" }, "description": "Door hook name, e.g. door_03" },
+        { "name": "number", "type": "u32", "description": "Integer (often 0)" },
+        { "name": "x", "type": "f32", "description": "Position X" },
+        { "name": "y", "type": "f32", "description": "Position Y" },
+        { "name": "z", "type": "f32", "description": "Position Z" },
+        { "name": "qx", "type": "f32", "description": "Quaternion X" },
+        { "name": "qy", "type": "f32", "description": "Quaternion Y" },
+        { "name": "qz", "type": "f32", "description": "Quaternion Z" },
+        { "name": "qw", "type": "f32", "description": "Quaternion W" }
+      ]
+    }
+  },
+  "sections": [
+    {
+      "name": "header",
+      "typeRef": "Layout",
+      "offset": 0,
+      "size": 0,
+      "description": "First line must be exactly #MAXLAYOUT ASCII. filedependancy followed by a space and a path (e.g. to a .max file). Then the beginlayout line. All lines are parsed as text; indentation (3 spaces for count lines, 6 for data lines) is significant."
+    },
+    {
+      "name": "rooms",
+      "typeRef": "RoomEntry",
+      "offset": 0,
+      "size": 0,
+      "description": "After beginlayout, the rooms block: one line \"   roomcount N\" (three spaces before roomcount, N = number of rooms). Then N data lines, each starting with 6 spaces, then room_name and three decimal numbers (x y z). Example: \"      M02ae_09a 110.0 110.0 0.0\"."
+    },
+    {
+      "name": "tracks",
+      "typeRef": "TrackEntry",
+      "offset": 0,
+      "size": 0,
+      "description": "Line \"   trackcount N\" (three spaces; N can be 0). Then N data lines, each 6 spaces + name + x y z (three decimal numbers)."
+    },
+    {
+      "name": "obstacles",
+      "typeRef": "ObstacleEntry",
+      "offset": 0,
+      "size": 0,
+      "description": "Line \"   obstaclecount N\". Then N data lines, each 6 spaces + name + x y z (three decimal numbers)."
+    },
+    {
+      "name": "doorhooks",
+      "typeRef": "DoorHookEntry",
+      "offset": 0,
+      "size": 0,
+      "description": "Line \"   doorhookcount N\". Then N data lines, each 6 spaces + room_name + door_name + number + x y z (position) + qx qy qz qw (quaternion). Example: \"      M02ae_09a door_03 0 123.25 110.0 0.0 0.707107 0.0 0.0 -0.707107\" (10 tokens per line)."
+    }
+  ]
+}

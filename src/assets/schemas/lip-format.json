@@ -1,0 +1,71 @@
+{
+  "$schema": "https://openkotor.com/schemas/binary-format.schema.json",
+  "name": "LIP",
+  "description": "LIP (Lip Sync) files drive facial lip animation in KotOR I & II. They store a short timeline: a total duration in seconds and a list of keyframes. Each keyframe has a time (in seconds from the start) and a lip shape index (0–15) that picks a phoneme shape (ee, oh, m, etc.). Playback interpolates or steps between keyframes to sync lips to dialogue or sound.\n\nLayout: 16-byte header with magic (\"LIP \"), version, duration (float, seconds), and entryCount. The keyframe array follows immediately: entryCount entries, 5 bytes each—a float (time) and a byte (shape index). Keyframes are usually sorted by time. The LipShape enum maps shape index to a phoneme name for reference.\n\nParsing: Read the header; duration gives the clip length, entryCount says how many keyframes. Read entryCount × 5 bytes starting at offset 16. Each keyframe is time (4 bytes, float) then shape (1 byte, u8). Use the LipShape enum to interpret shape (e.g. 0 = ee_teeth, 11 = m_p_b).\n\nWriting: Choose duration and build the keyframe list (time in seconds, shape 0–15). Sort by time. Write header (fileType, fileVersion, duration, entryCount), then each keyframe as 4-byte float + 1-byte shape. All multi-byte values are little-endian.",
+  "endianness": "little",
+  "encoding": "windows-1252",
+  "root": "Header",
+  "types": {
+    "Header": {
+      "kind": "struct",
+      "description": "16 bytes at the start. fileType is \"LIP \", fileVersion is the format version. duration is the total length of the animation in seconds. entryCount is how many keyframes follow; the keyframe block is entryCount × 5 bytes starting at offset 16.",
+      "fields": [
+        { "name": "fileType", "type": { "kind": "string", "length": 4 }, "description": "Must be 'LIP ' (4 chars, space-padded)." },
+        { "name": "fileVersion", "type": { "kind": "string", "length": 4 }, "description": "Version; e.g. 'V1.0'." },
+        { "name": "duration", "type": "f32", "description": "Total duration of the lip animation in seconds." },
+        { "name": "entryCount", "type": "u32", "description": "Number of keyframes. Keyframe block size = entryCount × 5 bytes." }
+      ]
+    },
+    "KeyFrame": {
+      "kind": "struct",
+      "description": "One keyframe (5 bytes): time in seconds from the start of the clip, and a lip shape index (0–15). See LipShape for the meaning of each index. Keyframes are typically ordered by time.",
+      "fields": [
+        { "name": "time", "type": "f32", "description": "Time in seconds (from start of clip) when this shape is shown." },
+        { "name": "shape", "type": "LipShape", "description": "Lip shape index 0–15; see LipShape enum." }
+      ]
+    },
+    "LipShape": {
+      "kind": "enum",
+      "description": "Lip shape / phoneme index (0–15). Standard set used for lip-sync: each value corresponds to a mouth shape (e.g. ee, oh, m). Use this to interpret the shape byte in each keyframe.",
+      "base": "u8",
+      "values": {
+        "ee_teeth": 0,
+        "eh_bet_red": 1,
+        "schwa": 2,
+        "ah_bat_cat": 3,
+        "oh_or_boat": 4,
+        "oo_blue": 5,
+        "y_you": 6,
+        "s_ts": 7,
+        "f_v": 8,
+        "n_ng": 9,
+        "th": 10,
+        "m_p_b": 11,
+        "t_d": 12,
+        "j_sh": 13,
+        "l_r": 14,
+        "k_g": 15
+      }
+    }
+  },
+  "constants": {
+    "headerSize": 16,
+    "keyframeSize": 5
+  },
+  "sections": [
+    {
+      "name": "header",
+      "typeRef": "Header",
+      "offset": 0,
+      "size": 16,
+      "description": "Fixed 16-byte header. Gives duration and entryCount; keyframes start at byte 16."
+    },
+    {
+      "name": "keyframes",
+      "typeRef": "KeyFrame",
+      "offset": 16,
+      "size": "entryCount * 5",
+      "description": "Keyframe array: entryCount entries, 5 bytes each (f32 time, u8 shape). Read from offset 16. Entry i is at 16 + i×5. Interpret shape with the LipShape enum."
+    }
+  ]
+}
