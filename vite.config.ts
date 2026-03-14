@@ -1,22 +1,26 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   root: '.',
-  publicDir: 'docs',
+  publicDir: 'public',
   build: {
     outDir: 'docs',
     sourcemap: true,
     rollupOptions: {
-      input: 'index.html',
+      input: {
+        main: resolve(__dirname, "index.html"),
+        404: resolve(__dirname, "public/404.html"),
+      },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
-          vendor: ['react', 'react-dom']
+          vendor: ['react', 'react-dom', 'react-router-dom']
         }
       }
     }
