@@ -1,10 +1,22 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { resolve } from 'path';
+import { copyFileSync } from 'fs';
+import { resolve, join } from 'path';
+
+// Copy index.html → 404.html for GitHub Pages SPA fallback
+function copy404Plugin() {
+  return {
+    name: 'copy-404',
+    closeBundle() {
+      const outDir = resolve(__dirname, 'docs');
+      copyFileSync(join(outDir, 'index.html'), join(outDir, '404.html'));
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), copy404Plugin()],
   root: '.',
   publicDir: 'public',
   build: {
@@ -12,8 +24,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "index.html"),
-        404: resolve(__dirname, "public/404.html"),
+        main: resolve(__dirname, "index.html")
       },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
