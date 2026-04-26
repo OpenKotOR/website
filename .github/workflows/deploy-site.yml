@@ -11,8 +11,9 @@ on:
 permissions:
   contents: read
 
+# Use a unique group name: `pages` can collide with GitHub's Pages deployment and cancel the whole run
 concurrency:
-  group: pages
+  group: openkotor-website-deploy
   cancel-in-progress: true
 
 env:

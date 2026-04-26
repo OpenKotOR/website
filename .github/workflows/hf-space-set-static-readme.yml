@@ -3,7 +3,7 @@
 # scripts/hf-space-README.md as README.md with `sdk: static` (see
 # https://huggingface.co/docs/hub/spaces-sdks-static ).
 
-name: Fix HF Space (static README)
+name: "Fix HF Space: static README"
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   upload-readme:
-    name: Set sdk: static on OpenKotOR/openkotor-site
+    name: Upload static README to Hugging Face Space
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
