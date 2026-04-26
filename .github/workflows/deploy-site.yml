@@ -140,13 +140,14 @@ jobs:
           python -m pip install "huggingface-hub[cli]>=1.12.0,<2.0.0"
 
       - name: Push static files to Space
-        # Prefer HF_TOKEN; HF_ACCESS_TOKEN is an alias for teams that use the same name locally
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN || secrets.HF_ACCESS_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_ACCESS_TOKEN: ${{ secrets.HF_ACCESS_TOKEN }}
           PUBLISH_DIR: ${{ env.PUBLISH_DIR }}
         run: |
+          export HF_TOKEN="${HF_TOKEN:-$HF_ACCESS_TOKEN}"
           if [ -z "$HF_TOKEN" ]; then
-            echo "::error::Add repository secret HF_TOKEN or HF_ACCESS_TOKEN (Hugging Face write token): Settings > Secrets and variables > Actions. Create at https://huggingface.co/settings/tokens"
+            echo "::error::Add secret HF_TOKEN or HF_ACCESS_TOKEN (Hugging Face write): Settings > Actions. Create at https://huggingface.co/settings/tokens"
             exit 1
           fi
           REPO='${{ env.HF_SPACE_REPO }}'
