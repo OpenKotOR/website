@@ -1,0 +1,158 @@
+# Build twice with different Vite `base` (GitHub project Pages = subpath; Hugging Face Space = root)
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION_FILE: .nvmrc
+  PAGES_ARTIFACT: site-ghp
+  HF_ARTIFACT: site-hf
+  PUBLISH_DIR: docs
+  # Hub Space id (NOT necessarily the same as this GitHub repo, which is OpenKotOR/website)
+  HF_SPACE_REPO: OpenKotOR/openkotor-site
+
+jobs:
+  # --- GHP: assets must use repo subpath (e.g. /openkotor-site/) -----------------
+  build_github_pages:
+    name: Build (GitHub Pages)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      - name: Upload static output
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PAGES_ARTIFACT }}
+          path: ${{ env.PUBLISH_DIR }}
+          if-no-files-found: error
+
+  # --- Hugging Face Space: served at Space root, `base` must be `/` --------------
+  build_huggingface:
+    name: Build (Hugging Face Space)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE: /
+
+      # Space must see sdk: static in root README or Hub stays on Gradio onboarding.
+      - name: Add Space README (static SDK)
+        run: cp scripts/hf-space-README.md "${PUBLISH_DIR}/README.md"
+
+      - name: Upload static output
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.HF_ARTIFACT }}
+          path: ${{ env.PUBLISH_DIR }}
+          if-no-files-found: error
+
+  deploy_github_pages:
+    name: Publish GitHub Pages
+    needs: build_github_pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PAGES_ARTIFACT }}
+          path: ${{ env.PUBLISH_DIR }}
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload to Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.PUBLISH_DIR }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy_huggingface:
+    name: Sync Hugging Face Space
+    needs: build_huggingface
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.HF_ARTIFACT }}
+          path: ${{ env.PUBLISH_DIR }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Hugging Face Hub CLI
+        # `hf` is provided by huggingface-hub; keep within the 1.x line for stable CLI
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "huggingface-hub[cli]>=1.12.0,<2.0.0"
+
+      - name: Push static files to Space
+        # Prefer HF_TOKEN; HF_ACCESS_TOKEN is an alias for teams that use the same name locally
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN || secrets.HF_ACCESS_TOKEN }}
+          PUBLISH_DIR: ${{ env.PUBLISH_DIR }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::Add repository secret HF_TOKEN or HF_ACCESS_TOKEN (Hugging Face write token): Settings > Secrets and variables > Actions. Create at https://huggingface.co/settings/tokens"
+            exit 1
+          fi
+          REPO='${{ env.HF_SPACE_REPO }}'
+          echo "Pushing to huggingface.co/spaces/$REPO (artifact must include README.md with sdk: static; GitHub repo is ${{ github.repository }})"
+          hf --version
+          hf upload "$REPO" "${PUBLISH_DIR}/" . \
+            --repo-type space \
+            --token "$HF_TOKEN" \
+            --commit-message "chore: deploy from ${GITHUB_REF_NAME} @ ${GITHUB_SHA}"
