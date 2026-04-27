@@ -14,6 +14,6 @@ short_description: "OldRepublicDevs: KotOR I & II modding, tools, and docs"
 
 # Old Republic Devs (Hugging Face)
 
-This Space is the static build for [OldRepublicDevs](https://huggingface.co/OldRepublicDevs) on the Hub. Source: [github.com/OpenKotOR/website](https://github.com/OpenKotOR/website) · [openkotor.com](https://openkotor.com)
+This Space serves the Vite + React static build for the OpenKotOR community. Source: [OpenKotOR/website](https://github.com/OpenKotOR/website) · [openkotor.com](https://openkotor.com)
 
 **Live app (Hub):** [https://oldrepublicdevs-site.static.hf.space/](https://oldrepublicdevs-site.static.hf.space/)
