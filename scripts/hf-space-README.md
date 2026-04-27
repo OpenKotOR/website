@@ -15,3 +15,5 @@ short_description: "OpenKotOR: KotOR I & II modding, tools, and docs"
 # OpenKotOR
 
 This Space serves the Vite + React static build. Source: [OpenKotOR/website](https://github.com/OpenKotOR/website) · [openkotor.com](https://openkotor.com)
+
+**Live app (Hub):** [https://openkotor-site.static.hf.space/](https://openkotor-site.static.hf.space/)
