@@ -1,4 +1,5 @@
 import { createContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
+import { defaultPageTitle, SITE_BRAND } from '../config/siteBrand';
 import { AppState, AppAction, AppContextType, AppConfig, Theme } from '../types';
 
 // Initial state
@@ -145,7 +146,7 @@ export function AppProvider({ children, config }: AppProviderProps) {
 
       // Update document title if we have guild name
       if (typeof document !== "undefined" && data.name) {
-        document.title = `${data.name} — OpenKotOR`;
+        document.title = `${data.name} — ${SITE_BRAND}`;
       }
     } catch (error) {
       dispatch({
@@ -183,7 +184,7 @@ export function AppProvider({ children, config }: AppProviderProps) {
   // Set up document title
   useEffect(() => {
     if (typeof document !== "undefined") {
-      document.title = "OpenKotOR — Modding & Reverse‑Engineering Hub";
+      document.title = defaultPageTitle();
     }
   }, []);
 

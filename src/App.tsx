@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { SITE_BRAND } from "./config/siteBrand";
 import { AppProvider } from "./providers/AppProvider";
 import AppHeader from "./components/common/AppHeader/AppHeader";
 import Home from "./pages/home/home";
@@ -18,7 +19,7 @@ function routerBasename() {
 const HF_MIRROR = import.meta.env.VITE_HF_MIRROR_URL || "https://oldrepublicdevs-site.static.hf.space/";
 
 /**
- * OpenKotOR — React single‑page app
+ * KotOR community site (OpenKotOR by default; Hub mirror may set VITE_HF_PUBLIC_BRAND).
  *
  * Routes: / (home), /formats (format list), /formats/:formatId (lazy-loaded format JSON).
  */
@@ -38,7 +39,7 @@ function OpenKOTORLanding() {
       <footer>
         <div className="container row" style={{ justifyContent: "space-between" }}>
           <div>
-            <strong>OpenKotOR</strong> <span className="sep">•</span>{" "}
+            <strong>{SITE_BRAND}</strong> <span className="sep">•</span>{" "}
             <span className="muted">Community for KotOR I & II modding</span>
           </div>
           <div className="row">

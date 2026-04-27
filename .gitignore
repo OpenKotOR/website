@@ -24,5 +24,11 @@ node_modules
 # TypeScript
 *.tsbuildinfo
 
+# Copied for Hugging Face Space only (see scripts/hf-space-README.md, scripts/publish-hf.ps1)
+docs/README.md
+
 # Research sources
 research/
+.history/
+
+docs/assets/
