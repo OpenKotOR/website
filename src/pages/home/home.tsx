@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from "react-router-dom";
 import { useAppContext } from '../../hooks/useAppContext';
 import heroBanner from '../../assets/images/openkotor_hero_banner.jpg';
 
@@ -37,11 +37,21 @@ export default function Home() {
                 <div className="muted" style={{ fontSize: 14 }}>File formats • Dialogue cameras • Pathfinding • Rendering • Tools</div>
                 <div style={{ height: 14 }} />
                 <div className="row" style={{ justifyContent: "center", gap: 10 }}>
-                  <span className="tag"><a href="/formats/erf">ERF</a> / <a href="/formats/rim">RIM</a> / <a href="/formats/erf">MOD</a></span>
-                  <span className="tag"><a href="/formats/2da">2DA</a></span>
-                  <span className="tag"><a href="/formats/gff">GFF</a></span>
-                  <span className="tag"><a href="/formats/bwm">WOK / Walkmesh</a></span>
-                  <span className="tag"><a href="/formats/mdl">MDL/MDX</a></span>
+                  <span className="tag">
+                    <Link to="/formats/erf">ERF</Link> / <Link to="/formats/rim">RIM</Link> / <Link to="/formats/erf">MOD</Link>
+                  </span>
+                  <span className="tag">
+                    <Link to="/formats/2da">2DA</Link>
+                  </span>
+                  <span className="tag">
+                    <Link to="/formats/gff">GFF</Link>
+                  </span>
+                  <span className="tag">
+                    <Link to="/formats/bwm">WOK / Walkmesh</Link>
+                  </span>
+                  <span className="tag">
+                    <Link to="/formats/mdl">MDL/MDX</Link>
+                  </span>
                 </div>
               </div>
             </div>
