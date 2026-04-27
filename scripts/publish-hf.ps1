@@ -16,6 +16,7 @@ if (-not $spaceRepo) { $spaceRepo = "OldRepublicDevs/site" }
 
 $env:HF_TOKEN = $token
 $env:VITE_BASE = "/"
+if (-not $env:VITE_HF_PUBLIC_BRAND) { $env:VITE_HF_PUBLIC_BRAND = "Old Republic Devs" }
 Write-Host "Building for Hugging Face Space (base=/ )..."
 npm run build
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

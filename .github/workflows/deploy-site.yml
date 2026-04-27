@@ -76,6 +76,7 @@ jobs:
         run: npm run build
         env:
           VITE_BASE: /
+          VITE_HF_PUBLIC_BRAND: "Old Republic Devs"
 
       # Space must see sdk: static in root README or Hub stays on Gradio onboarding.
       - name: Add Space README (static SDK)

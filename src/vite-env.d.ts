@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** Public Hugging Face Space mirror (OldRepublicDevs/site → oldrepublicdevs-site.static.hf.space). */
+  /** When set (HF static build), replaces default public name "OpenKotOR" with e.g. Old Republic Devs. */
+  readonly VITE_HF_PUBLIC_BRAND?: string;
+  /** Public Hugging Face Space static URL (OldRepublicDevs/site → oldrepublicdevs-site.static.hf.space). */
   readonly VITE_HF_MIRROR_URL?: string;
 }
 

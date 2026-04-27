@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from "react-router-dom";
+import { SITE_BRAND } from '../../config/siteBrand';
 import { useAppContext } from '../../hooks/useAppContext';
 import heroBanner from '../../assets/images/openkotor_hero_banner.jpg';
 
@@ -27,13 +28,13 @@ export default function Home() {
         <div className="container hero-grid">
           <div>
             <span className="badge"><span className="nowrap">KotOR I & II</span> <span className="sep">•</span> Modding & Reverse‑Engineering</span>
-            <h1 className="headline">OpenKotOR — the community hub for tools, docs, and deep dives into the Odyssey engine.</h1>
+            <h1 className="headline">{SITE_BRAND} — the community hub for tools, docs, and deep dives into the Odyssey engine.</h1>
             <p className="sub">We're a collaborative Discord focused on modding and reverse‑engineering <em>Star Wars: Knights of the Old Republic</em> I & II — from file formats and dialogue cameras to full engine re‑implementations.</p>
           </div>
           <div>
             <div className="kotor-frame card" aria-hidden="true">
               <div style={{ textAlign: "center", padding: 16 }}>
-                <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: ".3px", marginBottom: 6 }}>Odyssey Engine • OpenKotOR</div>
+                <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: ".3px", marginBottom: 6 }}>Odyssey Engine • {SITE_BRAND}</div>
                 <div className="muted" style={{ fontSize: 14 }}>File formats • Dialogue cameras • Pathfinding • Rendering • Tools</div>
                 <div style={{ height: 14 }} />
                 <div className="row" style={{ justifyContent: "center", gap: 10 }}>
@@ -62,7 +63,7 @@ export default function Home() {
       <section className="section">
         <div className="container">
           <div className="btnrow">
-            <a className="cta" href={inviteUrl} target="_blank" rel="noopener" aria-label="Join OpenKotOR Discord">
+            <a className="cta" href={inviteUrl} target="_blank" rel="noopener" aria-label={`Join ${SITE_BRAND} on Discord`}>
               <DiscordGlyph />
               <span>Join Discord</span>
               <small>(Instant invite)</small>
@@ -145,7 +146,7 @@ export default function Home() {
         <h2>FAQ</h2>
         <details>
           <summary>Is this an official project by the original game developers?</summary>
-          <p className="muted">No. OpenKotOR is a fan‑run community focused on research and modding. Respect IP and follow the rules in our Discord.</p>
+          <p className="muted">No. {SITE_BRAND} is a fan‑run community focused on research and modding. Respect IP and follow the rules in our Discord.</p>
         </details>
         <details>
           <summary>Can I share code or tools here?</summary>
