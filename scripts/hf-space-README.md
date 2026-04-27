@@ -7,7 +7,7 @@ sdk: static
 app_file: index.html
 header: mini
 fullWidth: true
-short_description: OpenKotOR: KotOR I & II modding, tools, and docs
+short_description: "OpenKotOR: KotOR I & II modding, tools, and docs"
 ---
 <!-- Static HTML Space: https://huggingface.co/docs/hub/spaces-sdks-static -->
 <!-- Must stay sdk: static; Gradio default README will break the Space even if index.html is present. -->
