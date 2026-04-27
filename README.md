@@ -72,16 +72,16 @@ The workflow runs two static builds: **GitHub Pages** with `VITE_BASE=/<repo>/` 
 
    ```bash
    hf auth login
-   hf repos create OpenKotOR/openkotor-site --type space --space-sdk static --public --exist-ok
+   hf repos create OpenKotOR/site --repo-type space --space-sdk static --public --exist-ok
    ```
 
-   Replace `openkotor-site` if the Space name must differ from the default upload target. Run `hf repos create --help` for other options. `--exist-ok` is safe to use every time: it does not fail if the Space already exists.
+   CI runs the same `hf repos create … --exist-ok` before each upload. Override the Space id with `HF_SPACE_REPO` if needed. Run `hf repos create --help` for other options.
 
 2. In **Settings → Secrets and variables → Actions**, add a secret named either **`HF_TOKEN`** or **`HF_ACCESS_TOKEN`** (same value; the name matches a common local env). Use a user or fine-grained token with **write** access to the Space. Never commit the token, print it, or use it in client-side code. Rotate the token if it is leaked.
 
-3. The **Sync Hugging Face Space** job uploads to **`OpenKotOR/openkotor-site`**. This repository is named **`OpenKotOR/website`**, so the Space name is **not** the same as the GitHub repo; the target is set as `HF_SPACE_REPO` in [`.github/workflows/deploy-site.yml`](.github/workflows/deploy-site.yml). CI reads **`HF_TOKEN`**, or **`HF_ACCESS_TOKEN`** if the former is unset.
+3. The **Sync Hugging Face Space** job uploads to **`OpenKotOR/site`** (Space id `HF_SPACE_REPO` in [`.github/workflows/deploy-site.yml`](.github/workflows/deploy-site.yml)). This keeps the public app URL short: **`https://openkotor-site.static.hf.space/`** (Hub always uses `{org_slug}-{space_slug}.static.hf.space`; you cannot pick a single-label host like `openkotor.static.hf.space` on `*.hf.space`). For your own hostname, use a [custom domain](https://huggingface.co/docs/hub/spaces-custom-domain) (PRO/Team) with DNS you control.
 
-**If the Space still shows the Gradio “Get started” tutorial** (or “No application file”) even though `index.html` is on the Hub, the [Space `README.md`](https://huggingface.co/spaces/OpenKotOR/openkotor-site/raw/main/README.md) is still `sdk: gradio`. A static Vite app **must** use root [`README.md` with `sdk: static`](https://huggingface.co/docs/hub/spaces-sdks-static) — see [`scripts/hf-space-README.md`](scripts/hf-space-README.md). Fix it in either way:
+**If the Space still shows the Gradio “Get started” tutorial** (or “No application file”) even though `index.html` is on the Hub, the [Space `README.md`](https://huggingface.co/spaces/OpenKotOR/site/raw/main/README.md) is still `sdk: gradio`. A static Vite app **must** use root [`README.md` with `sdk: static`](https://huggingface.co/docs/hub/spaces-sdks-static) — see [`scripts/hf-space-README.md`](scripts/hf-space-README.md). Fix it in either way:
 
 - **From GitHub (no local clone):** push these changes, add **`HF_TOKEN`** in repo secrets, then run the workflow **[Fix HF Space (static README)](.github/workflows/hf-space-set-static-readme.yml)** under the **Actions** tab (**Run workflow**).
 - **Locally** (set `HF_TOKEN` or `HF_ACCESS_TOKEN`):

@@ -1,6 +1,6 @@
 # Push the production static build to the Hugging Face Space (VITE_BASE=/ for Space root).
 # Set either $env:HF_TOKEN or $env:HF_ACCESS_TOKEN to a write-capable Hub token.
-# Optional: $env:HF_SPACE_REPO = "OpenKotOR/openkotor-site" (default matches this repo on GitHub)
+# Optional: $env:HF_SPACE_REPO = "OpenKotOR/site" (default: short Space name → openkotor-site.static.hf.space)
 $ErrorActionPreference = "Stop"
 $repoRoot = Join-Path $PSScriptRoot ".."
 Set-Location $repoRoot
@@ -12,7 +12,7 @@ if (-not $token) {
 }
 
 $spaceRepo = $env:HF_SPACE_REPO
-if (-not $spaceRepo) { $spaceRepo = "OpenKotOR/openkotor-site" }
+if (-not $spaceRepo) { $spaceRepo = "OpenKotOR/site" }
 
 $env:HF_TOKEN = $token
 $env:VITE_BASE = "/"
@@ -24,7 +24,8 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 # https://huggingface.co/docs/hub/spaces-sdks-static
 Copy-Item (Join-Path $repoRoot "scripts\hf-space-README.md") (Join-Path $repoRoot "docs\README.md") -Force
 
-Write-Host "Uploading to huggingface.co/spaces/$spaceRepo ..."
+Write-Host "Ensuring Space exists and uploading to huggingface.co/spaces/$spaceRepo ..."
+hf repos create $spaceRepo --repo-type space --space-sdk static --public --exist-ok --token $token
 # One commit: index.html, assets, and README (sdk: static) — the README line is what switches the Space off the Gradio placeholder.
 hf upload $spaceRepo "docs" . `
   --repo-type space `

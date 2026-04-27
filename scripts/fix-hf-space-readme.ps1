@@ -3,7 +3,7 @@
 # and serves index.html. Requires HF_TOKEN or HF_ACCESS_TOKEN.
 $ErrorActionPreference = "Stop"
 $root = Join-Path $PSScriptRoot ".."
-$spaceRepo = if ($env:HF_SPACE_REPO) { $env:HF_SPACE_REPO } else { "OpenKotOR/openkotor-site" }
+$spaceRepo = if ($env:HF_SPACE_REPO) { $env:HF_SPACE_REPO } else { "OpenKotOR/site" }
 
 $token = $env:HF_TOKEN
 if (-not $token) { $token = $env:HF_ACCESS_TOKEN }

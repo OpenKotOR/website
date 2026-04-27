@@ -21,8 +21,9 @@ env:
   PAGES_ARTIFACT: site-ghp
   HF_ARTIFACT: site-hf
   PUBLISH_DIR: docs
-  # Hub Space id (NOT necessarily the same as this GitHub repo, which is OpenKotOR/website)
-  HF_SPACE_REPO: OpenKotOR/openkotor-site
+  # Hub Space id (NOT necessarily the same as this GitHub repo, which is OpenKotOR/website).
+  # Short name `site` → app host `openkotor-site.static.hf.space` (HF always prefixes org slug).
+  HF_SPACE_REPO: OpenKotOR/site
 
 jobs:
   # --- GHP: assets must use repo subpath (e.g. /openkotor-site/) -----------------
@@ -152,8 +153,9 @@ jobs:
             exit 1
           fi
           REPO='${{ env.HF_SPACE_REPO }}'
-          echo "Pushing to huggingface.co/spaces/$REPO (artifact must include README.md with sdk: static; GitHub repo is ${{ github.repository }})"
+          echo "Ensuring Space exists (static SDK) and pushing to huggingface.co/spaces/$REPO (GitHub repo is ${{ github.repository }})"
           hf --version
+          hf repos create "$REPO" --repo-type space --space-sdk static --public --exist-ok --token "$HF_TOKEN"
           hf upload "$REPO" "${PUBLISH_DIR}/" . \
             --repo-type space \
             --token "$HF_TOKEN" \

@@ -6,7 +6,7 @@ import os
 import sys
 from pathlib import Path
 
-REPO = os.environ.get("HF_SPACE_REPO", "OpenKotOR/openkotor-site")
+REPO = os.environ.get("HF_SPACE_REPO", "OpenKotOR/site")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 README_SRC = REPO_ROOT / "scripts" / "hf-space-README.md"
 
