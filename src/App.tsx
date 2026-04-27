@@ -14,8 +14,8 @@ function routerBasename() {
   return b.replace(/\/$/, "") || undefined;
 }
 
-/** Public Hub static mirror: org OpenKotOR + Space `site` → `openkotor-site.static.hf.space` (closest to `openkotor.static.hf.space` the platform allows). */
-const HF_MIRROR = import.meta.env.VITE_HF_MIRROR_URL || "https://openkotor-site.static.hf.space/";
+/** Public Hub static mirror: org OldRepublicDevs + Space `site` → `oldrepublicdevs-site.static.hf.space`. */
+const HF_MIRROR = import.meta.env.VITE_HF_MIRROR_URL || "https://oldrepublicdevs-site.static.hf.space/";
 
 /**
  * OpenKotOR — React single‑page app

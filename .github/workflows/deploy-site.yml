@@ -21,9 +21,9 @@ env:
   PAGES_ARTIFACT: site-ghp
   HF_ARTIFACT: site-hf
   PUBLISH_DIR: docs
-  # Hub Space id (NOT necessarily the same as this GitHub repo, which is OpenKotOR/website).
-  # Short name `site` → app host `openkotor-site.static.hf.space` (HF always prefixes org slug).
-  HF_SPACE_REPO: OpenKotOR/site
+  # Hub Space id (NOT necessarily the same as this GitHub repo, which is OpenKotOR/website on GitHub).
+  # Hugging Face org: OldRepublicDevs. Short Space name `site` → `oldrepublicdevs-site.static.hf.space`.
+  HF_SPACE_REPO: OldRepublicDevs/site
 
 jobs:
   # --- GHP: assets must use repo subpath (e.g. /openkotor-site/) -----------------

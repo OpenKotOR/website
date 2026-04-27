@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** Public Hugging Face Space mirror (shortest on Hub: OpenKotOR/site → openkotor-site.static.hf.space). */
+  /** Public Hugging Face Space mirror (OldRepublicDevs/site → oldrepublicdevs-site.static.hf.space). */
   readonly VITE_HF_MIRROR_URL?: string;
 }
 

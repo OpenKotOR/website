@@ -1,6 +1,6 @@
 # Push the production static build to the Hugging Face Space (VITE_BASE=/ for Space root).
 # Set either $env:HF_TOKEN or $env:HF_ACCESS_TOKEN to a write-capable Hub token.
-# Optional: $env:HF_SPACE_REPO = "OpenKotOR/site" (default: short Space name → openkotor-site.static.hf.space)
+# Optional: $env:HF_SPACE_REPO = "OldRepublicDevs/site" (default → oldrepublicdevs-site.static.hf.space)
 $ErrorActionPreference = "Stop"
 $repoRoot = Join-Path $PSScriptRoot ".."
 Set-Location $repoRoot
@@ -12,7 +12,7 @@ if (-not $token) {
 }
 
 $spaceRepo = $env:HF_SPACE_REPO
-if (-not $spaceRepo) { $spaceRepo = "OpenKotOR/site" }
+if (-not $spaceRepo) { $spaceRepo = "OldRepublicDevs/site" }
 
 $env:HF_TOKEN = $token
 $env:VITE_BASE = "/"

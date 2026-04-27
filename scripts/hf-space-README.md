@@ -1,5 +1,5 @@
 ---
-title: OpenKotOR Site
+title: Old Republic Devs — Site
 emoji: 🪐
 colorFrom: indigo
 colorTo: blue
@@ -7,13 +7,13 @@ sdk: static
 app_file: index.html
 header: mini
 fullWidth: true
-short_description: "OpenKotOR: KotOR I & II modding, tools, and docs"
+short_description: "OldRepublicDevs: KotOR I & II modding, tools, and docs"
 ---
 <!-- Static HTML Space: https://huggingface.co/docs/hub/spaces-sdks-static -->
 <!-- Must stay sdk: static; Gradio default README will break the Space even if index.html is present. -->
 
-# OpenKotOR
+# Old Republic Devs (Hugging Face)
 
-This Space serves the Vite + React static build. Source: [OpenKotOR/website](https://github.com/OpenKotOR/website) · [openkotor.com](https://openkotor.com)
+This Space serves the Vite + React static build for the OpenKotOR community. Source: [OpenKotOR/website](https://github.com/OpenKotOR/website) · [openkotor.com](https://openkotor.com)
 
-**Live app (Hub):** [https://openkotor-site.static.hf.space/](https://openkotor-site.static.hf.space/)
+**Live app (Hub):** [https://oldrepublicdevs-site.static.hf.space/](https://oldrepublicdevs-site.static.hf.space/)

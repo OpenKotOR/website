@@ -68,22 +68,24 @@ The workflow runs two static builds: **GitHub Pages** with `VITE_BASE=/<repo>/` 
 
 ### Hugging Face Space
 
-1. **Create the Space once (Static HTML)** using a token that can create repositories in the [OpenKotOR](https://huggingface.co/OpenKotOR) namespace ([token settings](https://huggingface.co/settings/tokens)):
+Hugging Face namespace for this site is **`OldRepublicDevs`** (the GitHub org for source remains [OpenKotOR/website](https://github.com/OpenKotOR/website)).
+
+1. **Create the Space once (Static HTML)** using a token that can create repositories in the [OldRepublicDevs](https://huggingface.co/OldRepublicDevs) namespace ([token settings](https://huggingface.co/settings/tokens)):
 
    ```bash
    hf auth login
-   hf repos create OpenKotOR/site --repo-type space --space-sdk static --public --exist-ok
+   hf repos create OldRepublicDevs/site --repo-type space --space-sdk static --public --exist-ok
    ```
 
    CI runs the same `hf repos create … --exist-ok` before each upload. Override the Space id with `HF_SPACE_REPO` if needed. Run `hf repos create --help` for other options.
 
 2. In **Settings → Secrets and variables → Actions**, add a secret named either **`HF_TOKEN`** or **`HF_ACCESS_TOKEN`** (same value; the name matches a common local env). Use a user or fine-grained token with **write** access to the Space. Never commit the token, print it, or use it in client-side code. Rotate the token if it is leaked.
 
-3. The **Sync Hugging Face Space** job uploads to **`OpenKotOR/site`** (Space id `HF_SPACE_REPO` in [`.github/workflows/deploy-site.yml`](.github/workflows/deploy-site.yml)). The **canonical Hub mirror** is **`https://openkotor-site.static.hf.space/`** (see [Spaces overview](https://huggingface.co/docs/hub/spaces-overview): the running host is derived from owner + Space name, e.g. `SPACE_HOST` / embed URLs like `https://<author>-<space>.hf.space` in [Spaces embed](https://huggingface.co/docs/hub/spaces-embed); static builds use the `*.static.hf.space` suffix on the same subdomain string).
+3. The **Sync Hugging Face Space** job uploads to **`OldRepublicDevs/site`** (Space id `HF_SPACE_REPO` in [`.github/workflows/deploy-site.yml`](.github/workflows/deploy-site.yml)). The **canonical Hub mirror** is **`https://oldrepublicdevs-site.static.hf.space/`** (see [Spaces overview](https://huggingface.co/docs/hub/spaces-overview): the running host is derived from owner + Space name, e.g. `SPACE_HOST` / embed URLs like `https://<author>-<space>.hf.space` in [Spaces embed](https://huggingface.co/docs/hub/spaces-embed); static builds use the `*.static.hf.space` suffix on the same subdomain string).
 
-   **`https://openkotor.static.hf.space/` is not something you can attach to a Space.** That hostname is a single DNS label `openkotor` under the [Public Suffix](https://github.com/publicsuffix/list/pull/2157) zone `static.hf.space`; Hub does not expose “pick any label” for it, and an unauthenticated `GET` currently returns **401** (reserved / unassigned), not your app. The **closest first-party URL** under org **`OpenKotOR`** is therefore **`openkotor-site`** (Space repo `site`) → **`https://openkotor-site.static.hf.space/`**. For a hostname you choose (e.g. `preview.openkotor.com`), use a [custom domain](https://huggingface.co/docs/hub/spaces-custom-domain) (PRO/Team) with a CNAME to `hf.space` as documented there.
+   **`https://openkotor.static.hf.space/` is not something you can attach to a Space.** That hostname is a single DNS label under the [Public Suffix](https://github.com/publicsuffix/list/pull/2157) zone `static.hf.space`; Hub does not expose “pick any label” for it, and an unauthenticated `GET` currently returns **401** (reserved / unassigned), not your app. The **default Space URL** for this org is the Space repo `site` → **`https://oldrepublicdevs-site.static.hf.space/`**. For a hostname you choose (e.g. `preview.openkotor.com`), use a [custom domain](https://huggingface.co/docs/hub/spaces-custom-domain) (PRO/Team) with a CNAME to `hf.space` as documented there.
 
-**If the Space still shows the Gradio “Get started” tutorial** (or “No application file”) even though `index.html` is on the Hub, the [Space `README.md`](https://huggingface.co/spaces/OpenKotOR/site/raw/main/README.md) is still `sdk: gradio`. A static Vite app **must** use root [`README.md` with `sdk: static`](https://huggingface.co/docs/hub/spaces-sdks-static) — see [`scripts/hf-space-README.md`](scripts/hf-space-README.md). Fix it in either way:
+**If the Space still shows the Gradio “Get started” tutorial** (or “No application file”) even though `index.html` is on the Hub, the [Space `README.md`](https://huggingface.co/spaces/OldRepublicDevs/site/raw/main/README.md) is still `sdk: gradio`. A static Vite app **must** use root [`README.md` with `sdk: static`](https://huggingface.co/docs/hub/spaces-sdks-static) — see [`scripts/hf-space-README.md`](scripts/hf-space-README.md). Fix it in either way:
 
 - **From GitHub (no local clone):** push these changes, add **`HF_TOKEN`** in repo secrets, then run the workflow **[Fix HF Space (static README)](.github/workflows/hf-space-set-static-readme.yml)** under the **Actions** tab (**Run workflow**).
 - **Locally** (set `HF_TOKEN` or `HF_ACCESS_TOKEN`):
