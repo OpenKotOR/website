@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  /** Public Hugging Face Space mirror (shortest on Hub: OpenKotOR/site → openkotor-site.static.hf.space). */
+  readonly VITE_HF_MIRROR_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare module '*.jpg' {
   const src: string;
   export default src;

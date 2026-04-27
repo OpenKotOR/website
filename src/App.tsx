@@ -7,6 +7,16 @@ import Home from "./pages/home/home";
 const FormatsPage = lazy(() => import("./pages/formats/FormatsPage"));
 const FormatDetailPage = lazy(() => import("./pages/formats/FormatDetailPage"));
 
+// Vite sets BASE_URL with a trailing slash; React Router's basename has no trailing slash
+function routerBasename() {
+  const b = import.meta.env.BASE_URL;
+  if (b === "/" || b === "") return undefined;
+  return b.replace(/\/$/, "") || undefined;
+}
+
+/** Public Hub static mirror: org OpenKotOR + Space `site` → `openkotor-site.static.hf.space` (closest to `openkotor.static.hf.space` the platform allows). */
+const HF_MIRROR = import.meta.env.VITE_HF_MIRROR_URL || "https://openkotor-site.static.hf.space/";
+
 /**
  * OpenKotOR — React single‑page app
  *
@@ -14,7 +24,7 @@ const FormatDetailPage = lazy(() => import("./pages/formats/FormatDetailPage"));
  */
 function OpenKOTORLanding() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename()}>
       <AppHeader />
       <main>
         <Suspense fallback={<div className="container section muted">Loading…</div>}>
@@ -47,6 +57,9 @@ function OpenKOTORLanding() {
               rel="noopener"
             >
               GitHub
+            </a>
+            <a className="ghost" href={HF_MIRROR} target="_blank" rel="noopener">
+              HF mirror
             </a>
           </div>
         </div>
